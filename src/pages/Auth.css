@@ -1,0 +1,163 @@
+.auth-page.neo-tech {
+    background-color: var(--color-bg);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1.5rem;
+}
+
+.auth-background-effects {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.glow-orb {
+    position: absolute;
+    border-radius: var(--radius-full);
+    filter: blur(80px);
+    opacity: 0.15;
+}
+
+.orb-1 {
+    width: 300px;
+    height: 300px;
+    background-color: var(--color-primary);
+    top: -100px;
+    right: -100px;
+}
+
+.orb-2 {
+    width: 400px;
+    height: 400px;
+    background-color: var(--color-accent);
+    bottom: -150px;
+    left: -150px;
+}
+
+.auth-card.glass {
+    z-index: 1;
+    width: 100%;
+    max-width: 460px;
+    padding: 3rem;
+    border-radius: var(--radius-lg);
+}
+
+.auth-logo-neo {
+    width: 72px;
+    height: 72px;
+    background-color: rgba(0, 242, 255, 0.05);
+    border: 1px solid rgba(0, 242, 255, 0.1);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem auto;
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.05);
+}
+
+.auth-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.05em;
+    text-transform: uppercase;
+}
+
+.auth-subtitle {
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+}
+
+.form-group-neo {
+    margin-bottom: 1.75rem;
+}
+
+.form-group-neo label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--color-text-dim);
+    margin-bottom: 0.5rem;
+}
+
+.input-wrapper-neo {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon-neo {
+    position: absolute;
+    left: 1.25rem;
+    color: var(--color-text-dim);
+}
+
+.input-wrapper-neo input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3.25rem;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--color-glass-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-main);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+}
+
+.input-wrapper-neo input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+}
+
+.forgot-link-neo {
+    font-size: 0.65rem;
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.auth-btn-neo {
+    margin-top: 1rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+
+.auth-footer-neo {
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-glass-border);
+    text-align: center;
+}
+
+.auth-footer-neo p {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+.auth-link-neo {
+    color: var(--color-primary);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.auth-branding-neo {
+    margin-top: 2.5rem;
+    text-align: center;
+    opacity: 0.5;
+}
+
+.auth-branding-neo p {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+}

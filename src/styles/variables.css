@@ -1,0 +1,46 @@
+:root {
+  /* Brand Colors - Emerald Green (Matching Logo) */
+  --brand-primary: #00875E;
+  --brand-primary-rgb: 0, 135, 94;
+  --brand-dark: #006738;
+  --brand-light: #E8F5E9;
+  --brand-glow: rgba(0, 135, 94, 0.4);
+
+  /* Legacy Alias - For transition */
+  --nubank-purple: var(--brand-primary);
+
+  /* Light Mode (Default) */
+  --ios-bg: #F2F2F7;
+  --ios-surface: #FFFFFF;
+  --text-primary: #1C1C1E;
+  --text-secondary: #8E8E93;
+  --border-color: #E5E5EA;
+
+  --color-bg: var(--ios-bg);
+  --color-surface: var(--ios-surface);
+  --color-primary: var(--brand-primary);
+  --color-primary-dark: var(--brand-dark);
+  --sidebar-bg: var(--ios-surface);
+
+  /* Typography */
+  --font-main: 'Inter', system-ui, sans-serif;
+  --font-display: 'Manrope', sans-serif;
+
+  /* Layout */
+  --sidebar-width: 280px;
+}
+
+[data-theme='dark'] {
+  --ios-bg: #000000;
+  --ios-surface: #1C1C1E;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A1A1A6;
+  --border-color: #38383A;
+
+  /* Adjust Brand Colors for Dark Mode if needed */
+  --brand-light: rgba(0, 135, 94, 0.15);
+  --brand-glow: rgba(0, 135, 94, 0.6);
+  --color-surface: var(--ios-surface);
+  --color-bg: var(--ios-bg);
+  --sidebar-bg: #000000;
+}

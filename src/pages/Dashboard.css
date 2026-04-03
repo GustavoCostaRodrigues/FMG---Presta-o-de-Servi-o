@@ -1,0 +1,46 @@
+/* Specific Dashboard styles from user's Home.css snippet */
+.loader-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 50px;
+    color: var(--brand-primary);
+}
+
+.bill-amount-group {
+    display: flex;
+    justify-content: center;
+}
+
+.bill-status-indicator.pending {
+    background: rgba(255, 149, 0, 0.15);
+    color: #FF9500;
+}
+
+.pending-badge {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--ios-bg);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 50px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+/* FAB pulsação sutil */
+.fab-button:active {
+    transform: scale(0.95);
+}
+
+.filter-icon-wrapper {
+    color: var(--brand-primary);
+}

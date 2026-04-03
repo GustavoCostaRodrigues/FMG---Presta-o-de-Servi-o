@@ -1,0 +1,5 @@
+/* Layout styles are now handled in global.css and Dashboard.css */
+.page-wrapper {
+    padding: 1.5rem 2.5rem 5rem 2.5rem;
+    width: 100%;
+}
