@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, LogIn, Cpu, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import logoFazenda from '../assets/logo-fazenda.jpg';
 import './Auth.css';
 
 const Login = () => {
@@ -10,7 +11,6 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const { signIn } = useAuth();
-    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -20,7 +20,6 @@ const Login = () => {
         try {
             const { error: signInError } = await signIn(email, password);
             if (signInError) throw signInError;
-            // O AuthContext atualizará o estado e o App.jsx redirecionará
         } catch (err) {
             setError(err.message === 'Invalid login credentials' ? 'Credenciais inválidas. Verifique seu e-mail e senha.' : err.message);
         } finally {
@@ -29,47 +28,30 @@ const Login = () => {
     };
 
     return (
-        <div className="auth-page neo-tech">
-            <div className="auth-background-effects">
-                <div className="glow-orb orb-1"></div>
-                <div className="glow-orb orb-2"></div>
-            </div>
-
-            <div className="auth-card glass fade-in">
+        <div className="auth-page">
+            <div className="auth-card fade-in">
                 <div className="auth-header">
-                    <div className="auth-logo-neo">
-                        <Cpu size={36} color="var(--brand-primary)" className="glow-pulse" />
+                    <div className="auth-logo">
+                        <img src={logoFazenda} alt="Fazenda Morro Grande" style={{ width: '280px', height: 'auto', borderRadius: '12px' }} />
                     </div>
-                    <h1 className="auth-title text-neon">CORE_ACCESS</h1>
-                    <p className="auth-subtitle text-mono">Identify yourself to connect to the central network.</p>
                 </div>
 
                 <form className="auth-form" onSubmit={handleSubmit}>
                     {error && (
-                        <div className="auth-error glass-error fade-in" style={{
-                            padding: '12px',
-                            borderRadius: '12px',
-                            backgroundColor: 'rgba(255, 59, 48, 0.1)',
-                            border: '1px solid rgba(255, 59, 48, 0.2)',
-                            color: '#FF453A',
-                            fontSize: '13px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            marginBottom: '20px'
-                        }}>
+                        <div className="auth-error fade-in">
                             <AlertCircle size={16} />
                             <span>{error}</span>
                         </div>
                     )}
-                    <div className="form-group-neo">
-                        <label className="text-mono" htmlFor="email">USER_IDENTITY (EMAIL)</label>
-                        <div className="input-wrapper-neo">
-                            <Mail className="input-icon-neo" size={18} />
+
+                    <div className="form-group">
+                        <label htmlFor="email">Email</label>
+                        <div className="input-wrapper">
+                            <Mail className="input-icon" size={18} />
                             <input
                                 type="email"
                                 id="email"
-                                placeholder="ID_000000@ACCESS.COM"
+                                placeholder="seu@email.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
@@ -78,13 +60,13 @@ const Login = () => {
                         </div>
                     </div>
 
-                    <div className="form-group-neo">
-                        <div className="label-row">
-                            <label className="text-mono" htmlFor="password">ACCESS_PHRASE (PASS)</label>
-                            <a href="#" className="forgot-link-neo text-mono">RECOVER_ID</a>
+                    <div className="form-group">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <label htmlFor="password" style={{ margin: 0 }}>Senha</label>
+                            <a href="#" className="auth-link" style={{ fontSize: '12px' }}>Esqueceu a senha?</a>
                         </div>
-                        <div className="input-wrapper-neo">
-                            <Lock className="input-icon-neo" size={18} />
+                        <div className="input-wrapper">
+                            <Lock className="input-icon" size={18} />
                             <input
                                 type="password"
                                 id="password"
@@ -97,19 +79,15 @@ const Login = () => {
                         </div>
                     </div>
 
-                    <button type="submit" className="btn-primary auth-btn-neo" disabled={loading}>
-                        {loading ? <Loader2 size={20} className="spin" /> : <LogIn size={20} />}
-                        <span>{loading ? 'ESTABLISHING...' : 'ESTABLISH_CONNECTION'}</span>
+                    <button type="submit" className="auth-btn" disabled={loading}>
+                        {loading ? <div className="loading-spinner"></div> : <LogIn size={20} />}
+                        <span>{loading ? 'Entrando...' : 'Entrar'}</span>
                     </button>
                 </form>
 
-                <div className="auth-footer-neo">
-                    <p className="text-mono">UNREGISTERED? <Link to="/registro" className="auth-link-neo">REQUEST_NEW_ID</Link></p>
+                <div className="auth-footer">
+                    <p>Não tem uma conta? <Link to="/registro" className="auth-link">Cadastre-se</Link></p>
                 </div>
-            </div>
-
-            <div className="auth-branding-neo">
-                <p className="text-mono">NEO_TECH_OS v4.2 // SECURITY_ENFORCED</p>
             </div>
         </div>
     );

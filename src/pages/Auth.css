@@ -1,163 +1,191 @@
-.auth-page.neo-tech {
-    background-color: var(--color-bg);
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+:root {
+    --auth-bg: #f5f5f7;
+    --auth-card-bg: #ffffff;
+    --auth-primary: var(--brand-primary, #007aff);
+    --auth-text: #1d1d1f;
+    --auth-text-secondary: #86868b;
+    --auth-border: #d2d2d7;
+    --auth-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.auth-page {
     min-height: 100vh;
-    padding: 1.5rem;
-}
-
-.auth-background-effects {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-}
-
-.glow-orb {
-    position: absolute;
-    border-radius: var(--radius-full);
-    filter: blur(80px);
-    opacity: 0.15;
-}
-
-.orb-1 {
-    width: 300px;
-    height: 300px;
-    background-color: var(--color-primary);
-    top: -100px;
-    right: -100px;
-}
-
-.orb-2 {
-    width: 400px;
-    height: 400px;
-    background-color: var(--color-accent);
-    bottom: -150px;
-    left: -150px;
-}
-
-.auth-card.glass {
-    z-index: 1;
-    width: 100%;
-    max-width: 460px;
-    padding: 3rem;
-    border-radius: var(--radius-lg);
-}
-
-.auth-logo-neo {
-    width: 72px;
-    height: 72px;
-    background-color: rgba(0, 242, 255, 0.05);
-    border: 1px solid rgba(0, 242, 255, 0.1);
-    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 2rem auto;
-    box-shadow: 0 0 20px rgba(0, 242, 255, 0.05);
+    background-color: var(--auth-bg);
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--auth-card-bg);
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: var(--auth-shadow);
+    text-align: center;
+}
+
+.auth-header {
+    margin-bottom: 32px;
+}
+
+.auth-logo {
+    color: var(--auth-primary);
+    margin-bottom: 0px;
+    display: inline-block;
+}
+
+.auth-logo img {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
 }
 
 .auth-title {
-    font-size: 1.75rem;
-    font-weight: 800;
-    margin-bottom: 0.75rem;
-    letter-spacing: -0.05em;
-    text-transform: uppercase;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--auth-text);
+    margin-bottom: 8px;
 }
 
 .auth-subtitle {
-    color: var(--color-text-secondary);
-    font-size: 0.8125rem;
-    line-height: 1.6;
+    font-size: 15px;
+    color: var(--auth-text-secondary);
 }
 
-.form-group-neo {
-    margin-bottom: 1.75rem;
+.auth-form {
+    text-align: left;
 }
 
-.form-group-neo label {
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
     display: block;
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--color-text-dim);
-    margin-bottom: 0.5rem;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--auth-text);
+    margin-bottom: 8px;
 }
 
-.input-wrapper-neo {
+.input-wrapper {
     position: relative;
     display: flex;
     align-items: center;
 }
 
-.input-icon-neo {
+.input-icon {
     position: absolute;
-    left: 1.25rem;
-    color: var(--color-text-dim);
+    left: 12px;
+    color: var(--auth-text-secondary);
 }
 
-.input-wrapper-neo input {
+.auth-form input {
     width: 100%;
-    padding: 1rem 1rem 1rem 3.25rem;
-    background-color: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--color-glass-border);
-    border-radius: var(--radius-md);
-    color: var(--color-text-main);
-    font-family: var(--font-mono);
-    font-size: 0.875rem;
-    transition: all 0.3s ease;
+    padding: 12px 12px 12px 40px;
+    border: 1px solid var(--auth-border);
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.2s ease;
+    background: #fafafa;
 }
 
-.input-wrapper-neo input:focus {
+.auth-form input:focus {
     outline: none;
-    border-color: var(--color-primary);
-    background-color: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+    border-color: var(--auth-primary);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
 }
 
-.forgot-link-neo {
-    font-size: 0.65rem;
-    color: var(--color-primary);
-    text-decoration: none;
-}
-
-.auth-btn-neo {
-    margin-top: 1rem;
+.auth-btn {
     width: 100%;
+    padding: 14px;
+    background: var(--auth-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
     display: flex;
+    align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    padding: 1rem;
+    gap: 8px;
+    margin-top: 24px;
+    transition: opacity 0.2s ease;
 }
 
-.auth-footer-neo {
-    margin-top: 2.5rem;
-    padding-top: 2rem;
-    border-top: 1px solid var(--color-glass-border);
-    text-align: center;
+.auth-btn:hover {
+    opacity: 0.9;
 }
 
-.auth-footer-neo p {
-    font-size: 0.75rem;
-    color: var(--color-text-secondary);
+.auth-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-.auth-link-neo {
-    color: var(--color-primary);
-    text-transform: uppercase;
-    font-weight: 700;
+.auth-footer {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--auth-border);
+    font-size: 14px;
+    color: var(--auth-text-secondary);
 }
 
+.auth-link {
+    color: var(--auth-primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+}
+
+.auth-error {
+    padding: 12px;
+    border-radius: 8px;
+    background: #fff2f2;
+    border: 1px solid #ffcfcf;
+    color: #d70015;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Redesigned aesthetics from scratch, removing all neo-tech classes */
+.neo-tech,
+.glow-orb,
+.text-neon,
+.text-mono,
+.auth-logo-neo,
+.form-group-neo,
+.input-wrapper-neo,
+.input-icon-neo,
+.auth-btn-neo,
+.auth-footer-neo,
+.auth-link-neo,
 .auth-branding-neo {
-    margin-top: 2.5rem;
-    text-align: center;
-    opacity: 0.5;
-}
-
-.auth-branding-neo p {
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
+    display: none !important;
 }

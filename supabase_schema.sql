@@ -226,3 +226,44 @@ BEGIN
         updated_at = NOW();
 END;
 $$ LANGUAGE plpgsql;
+
+-- 10. Tabela de Perfis de Usuário (vinculada ao Auth do Supabase)
+CREATE TABLE IF NOT EXISTS profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    full_name TEXT,
+    email TEXT,
+    avatar_url TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Habilitar RLS nos perfis
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Usuários podem ver seu próprio perfil" 
+ON profiles FOR SELECT 
+USING (auth.uid() = id);
+
+CREATE POLICY "Usuários podem atualizar seu próprio perfil" 
+ON profiles FOR UPDATE 
+USING (auth.uid() = id);
+
+-- Trigger para criar perfil automaticamente no SignUp
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.profiles (id, full_name, email)
+    VALUES (
+        NEW.id, 
+        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), 
+        NEW.email
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
