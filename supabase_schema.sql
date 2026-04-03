@@ -267,3 +267,29 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+
+-- 11. Políticas de Segurança (Row Level Security - RLS)
+
+-- Habilitar RLS nas tabelas operacionais
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE collaborators ENABLE ROW LEVEL SECURITY;
+ALTER TABLE machinery ENABLE ROW LEVEL SECURITY;
+ALTER TABLE service_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+
+-- Criar políticas para permitir acesso total a usuários autenticados
+
+-- Clientes
+CREATE POLICY "Acesso total p/ autenticados" ON clients FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Colaboradores
+CREATE POLICY "Acesso total p/ autenticados" ON collaborators FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Maquinário
+CREATE POLICY "Acesso total p/ autenticados" ON machinery FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Tipos de Serviço
+CREATE POLICY "Acesso total p/ autenticados" ON service_types FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Serviços (Ordens de Serviço)
+CREATE POLICY "Acesso total p/ autenticados" ON services FOR ALL TO authenticated USING (true) WITH CHECK (true);
