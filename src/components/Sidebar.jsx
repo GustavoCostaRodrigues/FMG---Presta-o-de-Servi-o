@@ -19,9 +19,24 @@ import './Sidebar.css';
 import logoFazenda from '../assets/logo-fazenda.jpg';
 import logoFazendaDark from '../assets/logo-fazenda-dark.png';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { isDarkMode, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Erro ao sair:', error);
+    }
+  };
+
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
 
   const menuItems = [
     { icon: <LayoutDashboard size={20} />, label: 'Início', path: '/' },
@@ -52,10 +67,10 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         <div className="sidebar-header-match">
           <div className="user-profile-match">
-            <div className="avatar-match">G</div>
+            <div className="avatar-match">{userName.charAt(0).toUpperCase()}</div>
             <div className="user-info-match">
-              <span className="user-name-match">Gustavo</span>
-              <span className="user-role-match">MANAGER</span>
+              <span className="user-name-match" title={userName}>{userName}</span>
+              <span className="user-role-match">USUÁRIO</span>
             </div>
           </div>
         </div>
@@ -85,7 +100,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             <span>{isDarkMode ? 'Modo Claro' : 'Modo Noturno'}</span>
           </button>
 
-          <button className="logout-btn-match">
+          <button className="logout-btn-match" onClick={handleLogout}>
             <LogOut size={20} />
             <span>Sair</span>
           </button>

@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { db, SYNC_STATUS } from '../lib/db';
 import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 const SyncContext = createContext();
 
 export const SyncProvider = ({ children }) => {
+    const { isAuthenticated } = useAuth();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSync, setLastSync] = useState(null);
@@ -25,7 +27,7 @@ export const SyncProvider = ({ children }) => {
 
     // Puxar dados do servidor para o banco local
     const pullFromServer = useCallback(async () => {
-        if (!isOnline) return;
+        if (!isOnline || !isAuthenticated) return;
 
         try {
             console.log('Puxando dados do servidor...');
@@ -57,11 +59,11 @@ export const SyncProvider = ({ children }) => {
         } catch (error) {
             console.error('❌ Falha ao puxar dados:', error);
         }
-    }, [isOnline]);
+    }, [isOnline, isAuthenticated]);
 
     // Sincronizar alterações pendentes com o servidor
     const syncWithServer = useCallback(async () => {
-        if (!isOnline || isSyncing) return;
+        if (!isOnline || isSyncing || !isAuthenticated) return;
 
         try {
             setIsSyncing(true);
@@ -147,14 +149,14 @@ export const SyncProvider = ({ children }) => {
         } finally {
             setIsSyncing(false);
         }
-    }, [isOnline, isSyncing, pullFromServer]);
+    }, [isOnline, isSyncing, pullFromServer, isAuthenticated]);
 
-    // Tentar sincronizar quando voltar online
+    // Tentar sincronizar quando voltar online ou logar
     useEffect(() => {
-        if (isOnline) {
+        if (isOnline && isAuthenticated) {
             syncWithServer();
         }
-    }, [isOnline, syncWithServer]);
+    }, [isOnline, isAuthenticated, syncWithServer]);
 
     return (
         <SyncContext.Provider value={{ isOnline, isSyncing, lastSync, syncWithServer, pullFromServer }}>

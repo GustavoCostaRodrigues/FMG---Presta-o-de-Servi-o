@@ -1,16 +1,31 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, LogIn, Cpu } from 'lucide-react';
+import { Mail, Lock, LogIn, Cpu, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const { signIn } = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        navigate('/');
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { error: signInError } = await signIn(email, password);
+            if (signInError) throw signInError;
+            // O AuthContext atualizará o estado e o App.jsx redirecionará
+        } catch (err) {
+            setError(err.message === 'Invalid login credentials' ? 'Credenciais inválidas. Verifique seu e-mail e senha.' : err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -30,6 +45,23 @@ const Login = () => {
                 </div>
 
                 <form className="auth-form" onSubmit={handleSubmit}>
+                    {error && (
+                        <div className="auth-error glass-error fade-in" style={{
+                            padding: '12px',
+                            borderRadius: '12px',
+                            backgroundColor: 'rgba(255, 59, 48, 0.1)',
+                            border: '1px solid rgba(255, 59, 48, 0.2)',
+                            color: '#FF453A',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            marginBottom: '20px'
+                        }}>
+                            <AlertCircle size={16} />
+                            <span>{error}</span>
+                        </div>
+                    )}
                     <div className="form-group-neo">
                         <label className="text-mono" htmlFor="email">USER_IDENTITY (EMAIL)</label>
                         <div className="input-wrapper-neo">
@@ -41,6 +73,7 @@ const Login = () => {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
+                                disabled={loading}
                             />
                         </div>
                     </div>
@@ -59,13 +92,14 @@ const Login = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
+                                disabled={loading}
                             />
                         </div>
                     </div>
 
-                    <button type="submit" className="btn-primary auth-btn-neo">
-                        <LogIn size={20} />
-                        <span>ESTABLISH_CONNECTION</span>
+                    <button type="submit" className="btn-primary auth-btn-neo" disabled={loading}>
+                        {loading ? <Loader2 size={20} className="spin" /> : <LogIn size={20} />}
+                        <span>{loading ? 'ESTABLISHING...' : 'ESTABLISH_CONNECTION'}</span>
                     </button>
                 </form>
 

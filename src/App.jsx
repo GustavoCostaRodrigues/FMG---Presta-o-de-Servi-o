@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { SyncProvider } from './context/SyncContext';
+import { useAuth } from './context/AuthContext';
 import Layout from './layouts/Layout';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
@@ -18,14 +19,30 @@ import Settings from './pages/Settings';
 import './styles/global.css';
 
 function App() {
-  const isAuthenticated = true;
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--ios-bg)',
+        color: 'var(--text-primary)',
+        fontFamily: 'Inter, sans-serif'
+      }}>
+        <div className="loading-spinner">Carregando...</div>
+      </div>
+    );
+  }
 
   return (
     <ThemeProvider>
       <SyncProvider>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/registro" element={<Register />} />
+          <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" replace />} />
+          <Route path="/registro" element={!isAuthenticated ? <Register /> : <Navigate to="/" replace />} />
 
           <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}>
             <Route path="/" element={<Dashboard />} />

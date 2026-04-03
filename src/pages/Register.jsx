@@ -1,17 +1,37 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, UserPlus, Cpu } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, Cpu, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
 const Register = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const { signUp } = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        navigate('/login');
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { error: signUpError } = await signUp(email, password, {
+                data: { full_name: name }
+            });
+            if (signUpError) throw signUpError;
+
+            // Cadastro com sucesso, redirecionar para login ou exibir msg de confirmação
+            alert('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar a conta.');
+            navigate('/login');
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -31,6 +51,23 @@ const Register = () => {
                 </div>
 
                 <form className="auth-form" onSubmit={handleSubmit}>
+                    {error && (
+                        <div className="auth-error glass-error fade-in" style={{
+                            padding: '12px',
+                            borderRadius: '12px',
+                            backgroundColor: 'rgba(255, 59, 48, 0.1)',
+                            border: '1px solid rgba(255, 59, 48, 0.2)',
+                            color: '#FF453A',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            marginBottom: '20px'
+                        }}>
+                            <AlertCircle size={16} />
+                            <span>{error}</span>
+                        </div>
+                    )}
                     <div className="form-group-neo">
                         <label className="text-mono" htmlFor="name">USER_FULL_NAME</label>
                         <div className="input-wrapper-neo">
@@ -42,6 +79,7 @@ const Register = () => {
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 required
+                                disabled={loading}
                             />
                         </div>
                     </div>
@@ -57,6 +95,7 @@ const Register = () => {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
+                                disabled={loading}
                             />
                         </div>
                     </div>
@@ -72,13 +111,14 @@ const Register = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
+                                disabled={loading}
                             />
                         </div>
                     </div>
 
-                    <button type="submit" className="btn-primary auth-btn-neo">
-                        <UserPlus size={20} />
-                        <span>CREATE_AUTHENTICATION_ID</span>
+                    <button type="submit" className="btn-primary auth-btn-neo" disabled={loading}>
+                        {loading ? <Loader2 size={20} className="spin" /> : <UserPlus size={20} />}
+                        <span>{loading ? 'INITIALIZING...' : 'CREATE_AUTHENTICATION_ID'}</span>
                     </button>
                 </form>
 
