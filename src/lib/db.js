@@ -7,7 +7,7 @@ db.version(1).stores({
     clients: '++id, name, document, sync_status',
     machinery: '++id, name, serial_number, client_id, sync_status',
     collaborators: '++id, name, role, sync_status',
-    services: '++id, client_id, machine_id, technician_id, service_type_id, title, date, status, sync_status',
+    services: 'id, client_id, machine_id, technician_id, service_type_id, title, date, status, sync_status',
     service_types: '++id, name, sync_status'
 });
 

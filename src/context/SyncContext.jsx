@@ -33,7 +33,6 @@ export const SyncProvider = ({ children }) => {
         try {
             console.log('Puxando dados do servidor...');
 
-            // Puxar todas as tabelas em paralelo
             const [
                 { data: clients },
                 { data: machinery },
@@ -48,24 +47,42 @@ export const SyncProvider = ({ children }) => {
                 supabase.from('services').select('*')
             ]);
 
-            // 1. Limpar registros locais que já foram sincronizados (para evitar duplicidade ou lixo)
-            // Isso garante que se o servidor estiver vazio, o local também ficará (espelhamento real)
+            const safeMerge = async (storeName, serverItems) => {
+                if (!serverItems) return;
+
+                // 1. Identificar registros locais que estão marcados como sincronizados
+                // mas não existem mais no servidor (foram deletados por outro usuário)
+                const localSyncedItems = await db[storeName]
+                    .filter(item => item.sync_status === SYNC_STATUS.SYNCED)
+                    .toArray();
+
+                const serverIds = new Set(serverItems.map(s => s.id.toString()));
+
+                for (const local of localSyncedItems) {
+                    if (!serverIds.has(local.id.toString())) {
+                        await db[storeName].delete(local.id);
+                    }
+                }
+
+                // 2. Mesclar itens do servidor com o local
+                for (const item of serverItems) {
+                    const local = await db[storeName].get(item.id);
+                    // Só sobrescreve se o local não existir OU se estiver sincronizado (sem alterações pendentes)
+                    if (!local || local.sync_status === SYNC_STATUS.SYNCED) {
+                        await db[storeName].put({ ...item, sync_status: SYNC_STATUS.SYNCED });
+                    }
+                }
+            };
+
             await Promise.all([
-                db.clients.where('sync_status').equals(SYNC_STATUS.SYNCED).delete(),
-                db.machinery.where('sync_status').equals(SYNC_STATUS.SYNCED).delete(),
-                db.collaborators.where('sync_status').equals(SYNC_STATUS.SYNCED).delete(),
-                db.service_types.where('sync_status').equals(SYNC_STATUS.SYNCED).delete(),
-                db.services.where('sync_status').equals(SYNC_STATUS.SYNCED).delete()
+                safeMerge('clients', clients),
+                safeMerge('machinery', machinery),
+                safeMerge('collaborators', collaborators),
+                safeMerge('service_types', serviceTypes),
+                safeMerge('services', services)
             ]);
 
-            // 2. Inserir dados frescos do servidor
-            if (clients?.length > 0) await db.clients.bulkAdd(clients.map(c => ({ ...c, sync_status: SYNC_STATUS.SYNCED })));
-            if (machinery?.length > 0) await db.machinery.bulkAdd(machinery.map(m => ({ ...m, sync_status: SYNC_STATUS.SYNCED })));
-            if (collaborators?.length > 0) await db.collaborators.bulkAdd(collaborators.map(c => ({ ...c, sync_status: SYNC_STATUS.SYNCED })));
-            if (serviceTypes?.length > 0) await db.service_types.bulkAdd(serviceTypes.map(t => ({ ...t, sync_status: SYNC_STATUS.SYNCED })));
-            if (services?.length > 0) await db.services.bulkAdd(services.map(s => ({ ...s, sync_status: SYNC_STATUS.SYNCED })));
-
-            console.log('✅ Dados atualizados com o servidor!');
+            console.log('✅ Dados mesclados com o servidor (respeitando estados de sync)');
             setLastSync(new Date());
         } catch (error) {
             console.error('❌ Falha ao puxar dados:', error);
@@ -182,12 +199,20 @@ export const SyncProvider = ({ children }) => {
                     .toArray();
 
                 if (pendingServices.length > 0) {
-                    console.log(`Sincronizando ${pendingServices.length} serviços...`, pendingServices);
+                    console.group('🔍 Diagnóstico Sincronização de Serviços');
+                    console.log(`Payload do RPC sync_services (${pendingServices.length} itens):`, JSON.stringify(pendingServices, null, 2));
+
                     const { error } = await supabase.rpc('sync_services', { p_services: pendingServices });
+
                     if (error) {
-                        console.error('Erro detalhado RPC sync_services:', error);
+                        console.error('❌ Erro no RPC sync_services:', error);
+                        console.groupEnd();
                         throw error;
                     }
+
+                    console.log('✅ RPC sync_services executado com sucesso!');
+                    console.groupEnd();
+
                     await Promise.all(pendingServices.map(s =>
                         db.services.update(s.id, { sync_status: SYNC_STATUS.SYNCED })
                     ));

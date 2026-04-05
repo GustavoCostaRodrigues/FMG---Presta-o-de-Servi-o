@@ -165,7 +165,7 @@ const ServiceHistory = () => {
                     <div style={{
                         padding: '16px 24px',
                         display: 'grid',
-                        gridTemplateColumns: '120px 2fr 1.5fr 1fr 120px 40px',
+                        gridTemplateColumns: '44px 120px 2fr 1.5fr 1fr 120px 40px',
                         color: 'var(--text-secondary)',
                         fontSize: '12px',
                         fontWeight: 700,

@@ -56,14 +56,25 @@ const ServiceDetail = () => {
 
     const handleStatusUpdate = async (newStatus) => {
         try {
-            await db.services.update(serviceId, {
+            console.group('🛠️ Diagnóstico Alteração de Status');
+            console.log(`Alterando status do serviço ${serviceId} para: ${newStatus}`);
+
+            const idToUpdate = isNaN(serviceId) ? serviceId : Number(serviceId);
+
+            await db.services.update(idToUpdate, {
                 status: newStatus,
                 sync_status: SYNC_STATUS.PENDING_UPDATE,
                 updated_at: new Date().toISOString()
             });
+
+            const updatedRecord = await db.services.get(idToUpdate);
+            console.log('Registro após update local:', updatedRecord);
+            console.groupEnd();
+
             syncWithServer();
         } catch (error) {
             console.error("Erro ao atualizar status:", error);
+            console.groupEnd();
         }
     };
 
