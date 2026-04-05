@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     ChevronLeft, Building2, Wrench, Users,
     Clock, MapPin, DollarSign, Calendar,
@@ -17,9 +17,14 @@ import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 const ServiceDetail = () => {
     const { id: serviceId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { syncWithServer } = useSync();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+    // Determina de onde o usuário veio para o botão "Voltar" inteligente
+    const fromPath = location.state?.from || '/historico';
+    const backLabel = fromPath === '/' ? 'Voltar para Início' : 'Voltar para Histórico';
 
     // Buscar dados reais do banco
     const service = useLiveQuery(() => db.services.get(serviceId), [serviceId]);
@@ -111,7 +116,7 @@ const ServiceDetail = () => {
             <main className="main-content">
                 <header style={{ marginBottom: '32px' }}>
                     <button
-                        onClick={() => navigate('/historico')}
+                        onClick={() => navigate(fromPath)}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '8px', border: 'none',
                             background: 'transparent', color: '#00875E', fontWeight: 700,
@@ -119,7 +124,7 @@ const ServiceDetail = () => {
                         }}
                     >
                         <ChevronLeft size={20} />
-                        Voltar para Histórico
+                        {backLabel}
                     </button>
 
                     <div style={{
@@ -264,7 +269,7 @@ const ServiceDetail = () => {
                             </p>
 
                             <button
-                                onClick={() => client && navigate(`/clientes`)}
+                                onClick={() => client && navigate(`/clientes/${client.id}/historico`)}
                                 style={{
                                     marginTop: '20px', width: '100%', padding: '12px', borderRadius: '14px',
                                     border: '1px solid #E5E5EA', background: '#F2F2F7',
@@ -367,12 +372,17 @@ const ServiceDetail = () => {
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>VALOR TOTAL</div>
                                             <span style={{ fontSize: '20px', fontWeight: 900, color: '#1C1C1E' }}>
                                                 {formatCurrency(service.valor)}
                                             </span>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
-                                                <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, backgroundColor: 'rgba(0, 135, 94, 0.1)', color: '#00875E', textTransform: 'uppercase' }}>
-                                                    REPASSE ÚNICO
+
+                                            <div style={{ marginTop: '12px', borderTop: '1px dashed #E5E5EA', paddingTop: '12px' }}>
+                                                <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--brand-primary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                    Custo do Técnico ({technician?.tipo_recebimento || 'Geral'})
+                                                </div>
+                                                <span style={{ fontSize: '16px', fontWeight: 800, color: '#1C1C1E' }}>
+                                                    {formatCurrency(service.valor_hh)}
                                                 </span>
                                             </div>
                                         </div>

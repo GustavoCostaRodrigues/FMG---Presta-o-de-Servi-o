@@ -124,9 +124,18 @@ const ServiceDetailModal = ({ isOpen, onClose, service }) => {
                                 <div className="detail-card" style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '20px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: 'var(--brand-primary)' }}>
                                         <DollarSign size={18} />
-                                        <span style={{ fontSize: '13px', fontWeight: 800 }}>Valor Total</span>
+                                        <span style={{ fontSize: '13px', fontWeight: 800 }}>Repasse Técnico</span>
+                                    </div>
+                                    <p style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#1C1C1E' }}>{formatCurrency(service.valor_hh)}</p>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>Custo calculado via HH</p>
+                                </div>
+                                <div className="detail-card" style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '20px', backgroundColor: 'rgba(0, 135, 94, 0.03)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: 'var(--brand-primary)' }}>
+                                        <DollarSign size={18} />
+                                        <span style={{ fontSize: '13px', fontWeight: 800 }}>Valor da OS</span>
                                     </div>
                                     <p style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--brand-primary)' }}>{formatCurrency(service.valor)}</p>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>Valor total (Faturamento)</p>
                                 </div>
                             </div>
 

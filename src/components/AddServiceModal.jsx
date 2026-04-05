@@ -10,6 +10,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useSync } from '../context/SyncContext';
 import { supabase } from '../lib/supabase';
 
+import { calculateServiceHH, parseDurationToHours } from '../utils/serviceHelpers';
+
 const AddServiceModal = ({ isOpen, onClose, onSave }) => {
     const { syncWithServer } = useSync();
     const [formData, setFormData] = useState({
@@ -25,27 +27,6 @@ const AddServiceModal = ({ isOpen, onClose, onSave }) => {
         paymentType: 'diaria'
     });
 
-    // Helper para converter "4h 30m" em decimal (4.5)
-    const parseDurationToHours = (text) => {
-        if (!text) return 0;
-
-        // Regex para extrair horas e minutos
-        const hoursMatch = text.match(/(\d+)\s*h/i);
-        const minsMatch = text.match(/(\d+)\s*m/i);
-
-        let totalHours = 0;
-        if (hoursMatch) totalHours += parseInt(hoursMatch[1]);
-        if (minsMatch) totalHours += parseInt(minsMatch[1]) / 60;
-
-        // Se não houver 'h' ou 'm', tenta ver se é apenas um número
-        if (!hoursMatch && !minsMatch) {
-            const num = parseFloat(text.replace(',', '.'));
-            if (!isNaN(num)) return num;
-        }
-
-        return totalHours;
-    };
-
     const [selectedStaff, setSelectedStaff] = useState([]);
 
     const clients = useLiveQuery(() => db.clients.toArray()) || [];
@@ -57,8 +38,15 @@ const AddServiceModal = ({ isOpen, onClose, onSave }) => {
         e.preventDefault();
         try {
             const workedHours = parseDurationToHours(formData.duration);
-            const totalSalary = parseFloat(formData.totalAmount.replace(',', '.')) || 0;
-            const workedHH = workedHours > 0 ? totalSalary / workedHours : 0;
+            const technicianId = selectedStaff[0] || null;
+            const technician = collaborators.find(c => c.id === technicianId);
+
+            // Cálculo dinâmico do HH baseado no perfil do técnico
+            const calculatedHH = calculateServiceHH(technician, workedHours);
+
+            // O valor total da OS pode ser o informado manualmente ou o calculado
+            // Mantemos a flexibilidade para o usuário informar o valor final da OS (venda)
+            const totalValue = parseFloat(formData.totalAmount.replace(',', '.')) || 0;
 
             const customer_id = parseInt(formData.customerId) || null;
             const machinery_id = parseInt(formData.machineryId) || null;
@@ -69,13 +57,13 @@ const AddServiceModal = ({ isOpen, onClose, onSave }) => {
                 title: formData.description || '',
                 client_id: customer_id,
                 machine_id: machinery_id,
-                technician_id: selectedStaff[0] || null,
+                technician_id: technicianId,
                 service_type_id: service_type_id,
                 date: formData.date,
                 duration: formData.duration,
                 area: formData.areaValue ? `${formData.areaValue} ${formData.areaUnit}` : '',
-                valor: totalSalary,
-                valor_hh: workedHH || 0,
+                valor: totalValue,
+                valor_hh: calculatedHH, // Snapshot do custo calculado
                 status: 'paid',
                 created_at: new Date().toISOString()
             };

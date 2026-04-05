@@ -3,10 +3,11 @@ import Dexie from 'dexie';
 export const db = new Dexie('AppGabiDB');
 
 // Definição do esquema para suporte offline
-db.version(1).stores({
+// Usamos Versão 11 para garantir que sobreponha versões residuais anteriores (V10 detectada)
+db.version(11).stores({
     clients: '++id, name, document, sync_status',
     machinery: '++id, name, serial_number, client_id, sync_status',
-    collaborators: '++id, name, role, sync_status',
+    collaborators: '++id, name, role, tipo_recebimento, sync_status',
     services: 'id, client_id, machine_id, technician_id, service_type_id, title, date, status, sync_status',
     service_types: '++id, name, sync_status'
 });
@@ -24,21 +25,34 @@ export const SYNC_STATUS = {
     PENDING_DELETE: 'pending_delete'
 };
 
-// Inicializa o banco
-db.open().then(async () => {
-    // Purga manual de dados legacy (IDs antigos no formato OS-)
-    await db.services.where('id').startsWith('OS-').delete();
+// Inicializa o banco com lógica de Auto-Correção (Self-Healing)
+const initDatabase = async () => {
+    try {
+        await db.open();
 
-    // Opcional: Se existir algum serviço com id vazio ou inválido, remove também para não travar o sync
-    await db.services.filter(s => !s.id || s.id === 'undefined').delete();
+        // Purga manual de dados legacy (IDs antigos no formato OS-)
+        await db.services.where('id').startsWith('OS-').delete();
+        await db.services.filter(s => !s.id || s.id === 'undefined').delete();
 
-    // Auto-correção de campos (migração de 'nome' para 'name')
-    await db.clients.toCollection().modify(c => {
-        if (!c.name && c.nome) {
-            c.name = c.nome;
-            delete c.nome;
+        // Auto-correção de campos (migração de 'nome' para 'name')
+        await db.clients.toCollection().modify(c => {
+            if (!c.name && c.nome) {
+                c.name = c.nome;
+                delete c.nome;
+            }
+        });
+
+        console.log('🧹 Database cleanup and healing complete.');
+    } catch (err) {
+        console.error('❌ Erro crítico ao abrir banco de dados:', err);
+
+        // Se houver erro de Upgrade (geralmente mudança de Primary Key), limpamos o banco
+        if (err.name === 'UpgradeError' || err.message.includes('primary key')) {
+            console.warn('⚠️ Conflito de esquema detectado. Resetando banco local para sincronização limpa...');
+            await db.delete();
+            window.location.reload();
         }
-    });
+    }
+};
 
-    console.log('🧹 Database cleanup and healing complete.');
-});
+initDatabase();

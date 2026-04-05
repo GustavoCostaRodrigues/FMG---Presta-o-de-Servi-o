@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import {
     ChevronLeft, Mail, Phone, MapPin, Calendar,
-    FileText, CheckCircle2, Clock, Wrench
+    FileText, CheckCircle2, Clock, Wrench, DollarSign
 } from 'lucide-react';
 import { generateServiceReport } from '../utils/pdfGenerator';
 import { db } from '../lib/db';
@@ -76,6 +76,13 @@ const CollaboratorDetail = () => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <Phone size={16} color="rgba(255,255,255,0.7)" />
                                         <span style={{ fontSize: '14px' }}>{prof.phone || 'Telefone não informado'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <DollarSign size={16} color="rgba(255,255,255,0.7)" />
+                                        <span style={{ fontSize: '14px' }}>
+                                            {prof.tipo_recebimento || 'Mensal'}: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prof.valor_base || 0)}
+                                            {prof.tipo_recebimento !== 'Empreitada' && ` / ${prof.carga_horaria_padrao || 220}h`}
+                                        </span>
                                     </div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', gridColumn: '1 / -1' }}>
                                         {(prof.specialties || ['Técnico Geral']).map(spec => (

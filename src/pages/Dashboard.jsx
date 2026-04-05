@@ -137,7 +137,7 @@ const Dashboard = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--ios-bg)', padding: '6px 12px', borderRadius: '12px' }}>
                             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOnline ? '#34C759' : '#FF3B30' }} />
                             <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                                {isOnline ? 'Conectado (Cloud)' : 'Modo Offline'}
+                                {isOnline ? 'Online' : 'Offline'}
                             </span>
                         </div>
                     </div>
@@ -243,7 +243,7 @@ const Dashboard = () => {
                                     </div>
 
                                     <div className="bill-actions">
-                                        <button className="view-receipt-btn" onClick={() => navigate(`/historico/${item.id}`)}>
+                                        <button className="view-receipt-btn" onClick={() => navigate(`/historico/${item.id}`, { state: { from: '/' } })}>
                                             <Eye size={16} /> <span>Visualizar</span>
                                         </button>
                                     </div>

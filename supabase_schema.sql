@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS collaborators (
     status TEXT DEFAULT 'Ativo',
     email TEXT,
     phone TEXT,
+    tipo_recebimento TEXT CHECK (tipo_recebimento IN ('Mensal', 'Diário', 'Empreitada')),
+    valor_base DECIMAL(12,2) DEFAULT 0,
+    carga_horaria_padrao DECIMAL(10,2) DEFAULT 220,
     sync_status TEXT DEFAULT 'synced',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -175,7 +178,7 @@ CREATE OR REPLACE FUNCTION sync_collaborators(p_collaborators JSONB)
 RETURNS VOID AS $$
 BEGIN
     INSERT INTO collaborators (
-        id, name, role, status, email, phone, created_at, updated_at
+        id, name, role, status, email, phone, tipo_recebimento, valor_base, carga_horaria_padrao, created_at, updated_at
     )
     SELECT 
         (x->>'id')::BIGINT,
@@ -184,6 +187,9 @@ BEGIN
         (x->>'status'),
         (x->>'email'),
         (x->>'phone'),
+        (x->>'tipo_recebimento'),
+        NULLIF(x->>'valor_base', '')::DECIMAL,
+        NULLIF(x->>'carga_horaria_padrao', '')::DECIMAL,
         COALESCE((x->>'created_at')::TIMESTAMPTZ, NOW()),
         NOW()
     FROM jsonb_array_elements(p_collaborators) AS x
@@ -193,6 +199,9 @@ BEGIN
         status = EXCLUDED.status,
         email = EXCLUDED.email,
         phone = EXCLUDED.phone,
+        tipo_recebimento = EXCLUDED.tipo_recebimento,
+        valor_base = EXCLUDED.valor_base,
+        carga_horaria_padrao = EXCLUDED.carga_horaria_padrao,
         updated_at = NOW();
 END;
 $$ LANGUAGE plpgsql;

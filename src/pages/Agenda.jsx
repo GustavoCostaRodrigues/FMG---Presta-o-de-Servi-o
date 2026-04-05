@@ -16,6 +16,7 @@ import AddServiceModal from '../components/AddServiceModal';
 import ServiceDetailModal from '../components/ServiceDetailModal';
 import { db, SYNC_STATUS } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSync } from '../context/SyncContext';
 import './Agenda.css';
 
 const Agenda = () => {
@@ -23,6 +24,7 @@ const Agenda = () => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const { isOnline } = useSync();
 
     // Buscar serviços reais do Banco de dados
     const services = useLiveQuery(async () => {
@@ -83,26 +85,29 @@ const Agenda = () => {
 
         return (
             <div className="agenda-header">
-                <div className="agenda-title-group">
-                    <p style={{ color: 'var(--brand-primary)', fontWeight: 800, margin: '0 0 4px 0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Planejamento</p>
-                    <h2>Agenda Técnica</h2>
-                </div>
+                <div className="agenda-header-main" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div className="agenda-title-group">
+                        <p style={{ color: 'var(--brand-primary)', fontWeight: 800, margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Planejamento</p>
+                    </div>
 
-                <div className="view-controls">
-                    <button className={`view-btn ${view === 'month' ? 'active' : ''}`} onClick={() => setView('month')}>Mensal</button>
-                    <button className={`view-btn ${view === 'week' ? 'active' : ''}`} onClick={() => setView('week')}>Semanal</button>
-                    <button className={`view-btn ${view === 'day' ? 'active' : ''}`} onClick={() => setView('day')}>Diária</button>
-                </div>
+                    <div className="view-controls">
+                        <button className={`view-btn ${view === 'month' ? 'active' : ''}`} onClick={() => setView('month')}>Mensal</button>
+                        <button className={`view-btn ${view === 'week' ? 'active' : ''}`} onClick={() => setView('week')}>Semanal</button>
+                        <button className={`view-btn ${view === 'day' ? 'active' : ''}`} onClick={() => setView('day')}>Diária</button>
+                    </div>
 
-                <div className="date-nav">
-                    <button className="nav-btn" onClick={prevDate}><ChevronLeft size={18} /></button>
-                    <span className="current-date-label">{label}</span>
-                    <button className="nav-btn" onClick={nextDate}><ChevronRight size={18} /></button>
-                </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div className="date-nav">
+                            <button className="nav-btn" onClick={prevDate}><ChevronLeft size={18} /></button>
+                            <span className="current-date-label">{label}</span>
+                            <button className="nav-btn" onClick={nextDate}><ChevronRight size={18} /></button>
+                        </div>
 
-                <button className="generate-report-btn" onClick={() => setIsModalOpen(true)}>
-                    <Plus size={18} /> <span>Novo Evento</span>
-                </button>
+                        <button className="generate-report-btn" onClick={() => setIsModalOpen(true)}>
+                            <Plus size={18} /> <span>Novo Evento</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         );
     };
@@ -259,7 +264,19 @@ const Agenda = () => {
         <div className="layout-container">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
             <main className="main-content">
-                <div className="agenda-container page-content">
+                <header className="home-header">
+                    <div className="header-top">
+                        <h2 className="greeting">Agenda Técnica</h2>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--ios-bg)', padding: '6px 12px', borderRadius: '12px' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOnline ? '#34C759' : '#FF3B30' }} />
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                {isOnline ? 'Online' : 'Offline'}
+                            </span>
+                        </div>
+                    </div>
+                </header>
+
+                <div className="agenda-container page-content" style={{ paddingTop: 0 }}>
                     {renderHeader()}
                     <div className="agenda-body">
                         <AnimatePresence mode="wait">

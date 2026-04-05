@@ -10,7 +10,10 @@ const AddCollaboratorModal = ({ isOpen, onClose, onSave }) => {
         nome: '',
         cargo: '',
         email: '',
-        telefone: ''
+        telefone: '',
+        tipo_recebimento: 'Mensal',
+        valor_base: '',
+        carga_horaria_padrao: '220'
     });
 
     const applyPhoneMask = (value) => {
@@ -30,6 +33,9 @@ const AddCollaboratorModal = ({ isOpen, onClose, onSave }) => {
                 role: formData.cargo,
                 email: formData.email,
                 phone: formData.telefone,
+                tipo_recebimento: formData.tipo_recebimento,
+                valor_base: parseFloat(formData.valor_base.replace(',', '.')) || 0,
+                carga_horaria_padrao: parseFloat(formData.carga_horaria_padrao) || 220,
                 status: 'Ativo',
                 sync_status: SYNC_STATUS.PENDING_CREATE,
                 created_at: new Date().toISOString()
@@ -60,8 +66,8 @@ const AddCollaboratorModal = ({ isOpen, onClose, onSave }) => {
                     className="modal-content"
                     onClick={e => e.stopPropagation()}
                     style={{
-                        backgroundColor: 'var(--color-surface)', borderRadius: '28px', width: '90%', maxWidth: '500px',
-                        padding: '32px', position: 'relative'
+                        backgroundColor: 'var(--color-surface)', borderRadius: '28px', width: '90%', maxWidth: '550px',
+                        padding: '32px', position: 'relative', maxHeight: '90vh', overflowY: 'auto'
                     }}
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -140,16 +146,69 @@ const AddCollaboratorModal = ({ isOpen, onClose, onSave }) => {
                             </div>
                         </div>
 
+                        {/* Nova Seção: Configuração Financeira */}
+                        <div style={{ padding: '20px', backgroundColor: 'var(--ios-bg)', borderRadius: '20px', border: '1px dashed var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Perfil de Remuneração</h4>
+
+                            <div className="input-group">
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>MODALIDADE DE REPASSE</label>
+                                <select
+                                    value={formData.tipo_recebimento}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        let defaultCH = formData.carga_horaria_padrao;
+                                        if (val === 'Mensal') defaultCH = '220';
+                                        if (val === 'Diário') defaultCH = '8';
+                                        setFormData({ ...formData, tipo_recebimento: val, carga_horaria_padrao: defaultCH });
+                                    }}
+                                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: '#FFF', color: 'var(--text-primary)', fontSize: '14px', fontWeight: 600 }}
+                                >
+                                    <option value="Mensal">Mensal (Salário / 220h)</option>
+                                    <option value="Diário">Diário (Diária / 8h)</option>
+                                    <option value="Empreitada">Empreitada (Valor Fixo por OS)</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '12px' }}>
+                                <div className="input-group">
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                                        {formData.tipo_recebimento === 'Empreitada' ? 'VALOR BASE POR OS' : 'VALOR BASE (R$)'}
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#2E7D32', fontSize: '12px', fontWeight: 800 }}>R$</div>
+                                        <input
+                                            type="text"
+                                            placeholder="0,00"
+                                            value={formData.valor_base}
+                                            onChange={e => setFormData({ ...formData, valor_base: e.target.value })}
+                                            style={{ width: '100%', padding: '12px 12px 12px 36px', borderRadius: '12px', border: '1px solid var(--border-color)', background: '#FFF', fontSize: '14px', fontWeight: 700 }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="input-group" style={{ opacity: formData.tipo_recebimento === 'Empreitada' ? 0.5 : 1 }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>CH PADRÃO (h)</label>
+                                    <input
+                                        type="number"
+                                        disabled={formData.tipo_recebimento === 'Empreitada'}
+                                        value={formData.carga_horaria_padrao}
+                                        onChange={e => setFormData({ ...formData, carga_horaria_padrao: e.target.value })}
+                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: '#FFF', fontSize: '14px', fontWeight: 700 }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         <button
                             type="submit"
                             style={{
                                 marginTop: '12px', padding: '16px', borderRadius: '18px', border: 'none',
                                 background: 'var(--brand-primary)', color: '#FFFFFF', fontSize: '16px', fontWeight: 700,
-                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                boxShadow: '0 8px 20px rgba(0, 135, 94, 0.2)'
                             }}
                         >
                             <Check size={20} />
-                            <span>Salvar Colaborador</span>
+                            <span>Confirmar e Salvar</span>
                         </button>
                     </form>
                 </motion.div>

@@ -283,6 +283,8 @@ const AddClientModal = ({ isOpen, onClose, onSave }) => {
                                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>Nº</label>
                                     <input
                                         type="text"
+                                        value={formData.numero}
+                                        onChange={e => setFormData({ ...formData, numero: e.target.value })}
                                         style={{ width: '100%', padding: '12px', borderRadius: '14px', border: '1px solid var(--border-color)', background: 'var(--ios-bg)', color: 'var(--text-primary)', fontSize: '14px' }}
                                     />
                                 </div>

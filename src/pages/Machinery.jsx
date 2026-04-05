@@ -39,11 +39,11 @@ const Machinery = () => {
 
             <main className="main-content">
                 <header className="home-header">
-                    <div className="header-top">
+                    <div className="header-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h2 className="greeting">Maquinário</h2>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--ios-bg)', padding: '6px 12px', borderRadius: '12px' }}>
                             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOnline ? '#34C759' : '#FF3B30' }} />
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
                                 {isOnline ? 'Online' : 'Offline'}
                             </span>
                         </div>
