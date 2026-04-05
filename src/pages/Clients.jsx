@@ -10,6 +10,7 @@ import './Clients.css';
 import { db } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSync } from '../context/SyncContext';
+import EmptyState from '../components/EmptyState';
 
 const Clients = () => {
     const navigate = useNavigate();
@@ -21,7 +22,7 @@ const Clients = () => {
     // Buscar dados do Dexie (reativo)
     const clients = useLiveQuery(
         () => db.clients
-            .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+            .filter(c => (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()))
             .toArray(),
         [searchQuery]
     );
@@ -71,6 +72,12 @@ const Clients = () => {
                 <div className="clients-container fade-in">
                     {!clients ? (
                         <div className="loader-container">Carregando...</div>
+                    ) : clients.length === 0 ? (
+                        <EmptyState
+                            icon={User}
+                            title="Nenhum cliente cadastrado"
+                            description="Sua base de clientes está vazia. Adicione seu primeiro cliente para começar a gerenciar seus serviços."
+                        />
                     ) : (
                         <div className="clients-grid">
                             {clients.map(client => (
@@ -96,14 +103,16 @@ const Clients = () => {
 
                                     <div className="client-info-item">
                                         <MapPin size={16} />
-                                        <span>{client.city}</span>
+                                        <span className="client-address-text">
+                                            {client.rua ? `${client.rua}, ${client.numero} - ${client.bairro}, ${client.cidade}` : 'Endereço não informado'}
+                                        </span>
                                     </div>
 
                                     <div className="client-card-footer">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             {client.sync_status !== 'synced' && <Clock size={14} color="#FF9500" />}
-                                            <span style={{ fontSize: '11px', color: client.sync_status !== 'synced' ? '#FF9500' : 'var(--text-secondary)' }}>
-                                                {client.sync_status === 'synced' ? 'Sincronizado' : 'Aguardando rede'}
+                                            <span style={{ fontSize: '11px', fontWeight: 600, color: client.sync_status !== 'synced' ? '#FF9500' : '#34C759' }}>
+                                                {client.sync_status === 'synced' ? '✓ Sincronizado' : '⌚ Pendente'}
                                             </span>
                                         </div>
                                         <div className="view-history-link">
@@ -122,7 +131,7 @@ const Clients = () => {
                 onClose={() => setIsAddModalOpen(false)}
                 onSave={() => setIsAddModalOpen(false)}
             />
-        </div>
+        </div >
     );
 };
 

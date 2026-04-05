@@ -55,15 +55,18 @@ CREATE TABLE IF NOT EXISTS service_types (
 
 -- 5. Tabela de Serviços (Ordens de Serviço)
 CREATE TABLE IF NOT EXISTS services (
-    id TEXT PRIMARY KEY, -- Mantendo suporte para IDs padrão 'OS-XXXX'
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT,
     date TIMESTAMPTZ DEFAULT NOW(),
     client_id BIGINT REFERENCES clients(id) ON DELETE SET NULL,
     machine_id BIGINT REFERENCES machinery(id) ON DELETE SET NULL,
     technician_id BIGINT REFERENCES collaborators(id) ON DELETE SET NULL,
+    service_type_id BIGINT REFERENCES service_types(id) ON DELETE SET NULL,
     valor DECIMAL(12,2) DEFAULT 0,
+    valor_hh DECIMAL(12,2) DEFAULT 0,
     status TEXT DEFAULT 'pending',
     duration TEXT,
+    area TEXT,
     sync_status TEXT DEFAULT 'synced',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -199,18 +202,21 @@ CREATE OR REPLACE FUNCTION sync_services(p_services JSONB)
 RETURNS VOID AS $$
 BEGIN
     INSERT INTO services (
-        id, title, date, client_id, machine_id, technician_id, valor, status, duration, created_at, updated_at
+        id, title, date, client_id, machine_id, technician_id, service_type_id, valor, valor_hh, status, duration, area, created_at, updated_at
     )
     SELECT 
-        (x->>'id'),
+        (x->>'id')::UUID,
         (x->>'title'),
         (x->>'date')::TIMESTAMPTZ,
-        (x->>'client_id')::BIGINT,
-        (x->>'machine_id')::BIGINT,
-        (x->>'technician_id')::BIGINT,
-        (x->>'valor')::DECIMAL,
+        NULLIF(x->>'client_id', '')::BIGINT,
+        NULLIF(x->>'machine_id', '')::BIGINT,
+        NULLIF(x->>'technician_id', '')::BIGINT,
+        NULLIF(x->>'service_type_id', '')::BIGINT,
+        NULLIF(x->>'valor', '')::DECIMAL,
+        NULLIF(x->>'valor_hh', '')::DECIMAL,
         (x->>'status'),
         (x->>'duration'),
+        (x->>'area'),
         COALESCE((x->>'created_at')::TIMESTAMPTZ, NOW()),
         NOW()
     FROM jsonb_array_elements(p_services) AS x
@@ -220,10 +226,28 @@ BEGIN
         client_id = EXCLUDED.client_id,
         machine_id = EXCLUDED.machine_id,
         technician_id = EXCLUDED.technician_id,
+        service_type_id = EXCLUDED.service_type_id,
         valor = EXCLUDED.valor,
+        valor_hh = EXCLUDED.valor_hh,
         status = EXCLUDED.status,
         duration = EXCLUDED.duration,
+        area = EXCLUDED.area,
         updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql;
+
+-- Sincronizar Tipos de Serviço
+CREATE OR REPLACE FUNCTION sync_service_types(p_types JSONB)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO service_types (id, name, created_at)
+    SELECT 
+        (x->>'id')::BIGINT,
+        (x->>'name'),
+        COALESCE((x->>'created_at')::TIMESTAMPTZ, NOW())
+    FROM jsonb_array_elements(p_types) AS x
+    ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -30,43 +30,64 @@ const ServiceDetailModal = ({ isOpen, onClose, service }) => {
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="modal-header" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div className="modal-header" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                 <div style={{
                                     width: '48px', height: '48px', borderRadius: '14px',
                                     backgroundColor: 'var(--brand-primary)', color: '#fff',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: '0 4px 12px rgba(0, 135, 94, 0.2)'
                                 }}>
                                     <Wrench size={24} />
                                 </div>
                                 <div>
-                                    <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>OS-{service.id}</h2>
-                                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                        {service.title}
+                                    <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#1C1C1E' }}>
+                                        {service.serviceTypeName || 'Serviço'} - {service.clientName}
+                                    </h2>
+                                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, fontFamily: 'monospace', opacity: 0.7 }}>
+                                        {service.id}
                                     </p>
                                 </div>
                             </div>
-                            <button className="close-btn" onClick={onClose}>
-                                <X size={24} />
+                            <button
+                                onClick={onClose}
+                                style={{
+                                    border: 'none', background: 'var(--ios-bg)', width: '32px', height: '32px',
+                                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#E5E5EA'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--ios-bg)'}
+                            >
+                                <X size={18} strokeWidth={3} />
                             </button>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
                             <div style={{ display: 'flex', gap: '12px', padding: '16px', backgroundColor: 'var(--ios-bg)', borderRadius: '16px' }}>
                                 <Calendar className="text-brand" size={20} />
                                 <div>
                                     <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Data</span>
                                     <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 700 }}>
-                                        {format(new Date(service.date), "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                                        {service.date ? format(new Date(service.date), "dd/MM/yy", { locale: ptBR }) : '---'}
                                     </p>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '12px', padding: '16px', backgroundColor: 'var(--ios-bg)', borderRadius: '16px' }}>
                                 <Clock className="text-brand" size={20} />
                                 <div>
-                                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Horário</span>
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Tempo Gasto</span>
                                     <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 700 }}>
-                                        {format(new Date(service.date), "HH:mm", { locale: ptBR })}
+                                        {service.duration ? `${service.duration} horas` : '---'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', padding: '16px', backgroundColor: 'var(--ios-bg)', borderRadius: '16px' }}>
+                                <MapPin className="text-brand" size={20} />
+                                <div>
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Área</span>
+                                    <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 700 }}>
+                                        {service.area || '---'}
                                     </p>
                                 </div>
                             </div>
@@ -119,7 +140,7 @@ const ServiceDetailModal = ({ isOpen, onClose, service }) => {
                                     padding: '20px', backgroundColor: 'var(--ios-bg)', borderRadius: '18px',
                                     fontSize: '14px', lineHeight: 1.6, color: 'var(--text-primary)'
                                 }}>
-                                    {service.description || 'Nenhuma descrição detalhada fornecida para este serviço.'}
+                                    {service.title || service.description || 'Nenhuma descrição detalhada fornecida para este serviço.'}
                                 </div>
                             </div>
 

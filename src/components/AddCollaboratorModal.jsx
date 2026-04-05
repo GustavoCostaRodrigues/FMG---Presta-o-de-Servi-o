@@ -2,14 +2,24 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Briefcase, Mail, Phone, FileText, Check } from 'lucide-react';
 import { db, SYNC_STATUS } from '../lib/db';
+import { useSync } from '../context/SyncContext';
 
 const AddCollaboratorModal = ({ isOpen, onClose, onSave }) => {
+    const { syncWithServer } = useSync();
     const [formData, setFormData] = useState({
         nome: '',
         cargo: '',
         email: '',
         telefone: ''
     });
+
+    const applyPhoneMask = (value) => {
+        const cleanValue = value.replace(/\D/g, '').slice(0, 11);
+        if (cleanValue.length <= 10) {
+            return cleanValue.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+        }
+        return cleanValue.replace(/(\d{2})(\d{1})(\d{4})(\d{0,4})/, '($1) $2 $3-$4').replace(/-$/, '');
+    };
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -25,6 +35,7 @@ const AddCollaboratorModal = ({ isOpen, onClose, onSave }) => {
                 created_at: new Date().toISOString()
             });
             onSave();
+            syncWithServer();
         } catch (error) {
             console.error("Erro ao salvar colaborador:", error);
         }
@@ -60,7 +71,7 @@ const AddCollaboratorModal = ({ isOpen, onClose, onSave }) => {
                         </button>
                     </div>
 
-                    <form style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <div className="input-group">
                             <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '8px', marginLeft: '4px' }}>
                                 NOME COMPLETO <span style={{ color: '#FF3B30' }}>*</span>
@@ -121,9 +132,9 @@ const AddCollaboratorModal = ({ isOpen, onClose, onSave }) => {
                                     <input
                                         type="text"
                                         value={formData.telefone}
-                                        onChange={e => setFormData({ ...formData, telefone: e.target.value })}
+                                        onChange={e => setFormData({ ...formData, telefone: applyPhoneMask(e.target.value) })}
                                         style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--ios-bg)', color: 'var(--text-primary)', fontSize: '15px' }}
-                                        placeholder="(11) 99999-9999"
+                                        placeholder="(11) 9 9999-9999"
                                     />
                                 </div>
                             </div>
@@ -131,7 +142,6 @@ const AddCollaboratorModal = ({ isOpen, onClose, onSave }) => {
 
                         <button
                             type="submit"
-                            onClick={handleSave}
                             style={{
                                 marginTop: '12px', padding: '16px', borderRadius: '18px', border: 'none',
                                 background: 'var(--brand-primary)', color: '#FFFFFF', fontSize: '16px', fontWeight: 700,

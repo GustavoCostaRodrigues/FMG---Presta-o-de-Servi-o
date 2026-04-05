@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, MapPin, Building2, User, Phone, Mail, FileText, Check, Clock } from 'lucide-react';
 import { db, SYNC_STATUS } from '../lib/db';
+import { useSync } from '../context/SyncContext';
+import { supabase } from '../lib/supabase';
 
 const AddClientModal = ({ isOpen, onClose, onSave }) => {
+    const { syncWithServer } = useSync();
     const [clientType, setClientType] = useState('PJ'); // 'PF' or 'PJ'
     const [loadingCep, setLoadingCep] = useState(false);
     const [formData, setFormData] = useState({
-        nome: '',
+        name: '',
         documento: '',
         email: '',
         telefone: '',
@@ -19,6 +22,27 @@ const AddClientModal = ({ isOpen, onClose, onSave }) => {
         estado: '',
         complemento: ''
     });
+
+    const applyMask = (value, maskType) => {
+        const cleanValue = value.replace(/\D/g, '');
+        if (maskType === 'CEP') {
+            return cleanValue.slice(0, 8).replace(/(\d{5})(\d{1,3})/, '$1-$2');
+        }
+        if (maskType === 'Phone') {
+            const limited = cleanValue.slice(0, 11);
+            if (limited.length <= 10) {
+                return limited.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+            }
+            return limited.replace(/(\d{2})(\d{1})(\d{4})(\d{0,4})/, '($1) $2 $3-$4').replace(/-$/, '');
+        }
+        if (maskType === 'CPF') {
+            return cleanValue.slice(0, 11).replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+        }
+        if (maskType === 'CNPJ') {
+            return cleanValue.slice(0, 14).replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
+        }
+        return value;
+    };
 
     const handleCepSearch = async (cep) => {
         const cleanCep = cep.replace(/\D/g, '');
@@ -46,16 +70,55 @@ const AddClientModal = ({ isOpen, onClose, onSave }) => {
 
     const handleSave = async (e) => {
         e.preventDefault();
+        const clientData = {
+            name: formData.name,
+            document: formData.documento,
+            email: formData.email,
+            phone: formData.telefone,
+            cep: formData.cep,
+            rua: formData.rua,
+            numero: formData.numero,
+            bairro: formData.bairro,
+            cidade: formData.cidade,
+            estado: formData.estado,
+            complemento: formData.complemento,
+            type: clientType,
+            created_at: new Date().toISOString()
+        };
+
         try {
+            // Tenta enviar direto pro Supabase se estiver online
+            let syncStatus = SYNC_STATUS.PENDING_CREATE;
+
+            const { data, error } = await supabase.from('clients')
+                .insert([clientData])
+                .select();
+
+            if (!error && data) {
+                syncStatus = SYNC_STATUS.SYNCED;
+                clientData.id = data[0].id; // Usa o ID gerado pelo banco
+                console.log("✅ Cliente salvo diretamente no servidor!");
+            } else {
+                console.warn("⚠️ Falha no envio direto, salvando localmente para sync posterior:", error);
+            }
+
+            // Salva no Dexie (seja como SYNCED ou PENDING)
             await db.clients.add({
-                ...formData,
-                type: clientType,
-                sync_status: SYNC_STATUS.PENDING_CREATE,
-                created_at: new Date().toISOString()
+                ...clientData,
+                sync_status: syncStatus
+            });
+
+            onSave();
+            if (syncStatus === SYNC_STATUS.PENDING_CREATE) syncWithServer();
+        } catch (error) {
+            console.error("Erro ao processar salvamento de cliente:", error);
+            // Fallback total para Dexie local
+            await db.clients.add({
+                ...clientData,
+                sync_status: SYNC_STATUS.PENDING_CREATE
             });
             onSave();
-        } catch (error) {
-            console.error("Erro ao salvar cliente:", error);
+            syncWithServer();
         }
     };
 
@@ -122,10 +185,10 @@ const AddClientModal = ({ isOpen, onClose, onSave }) => {
                                 </div>
                                 <input
                                     type="text"
-                                    value={formData.nome}
-                                    onChange={e => setFormData({ ...formData, nome: e.target.value })}
+                                    value={formData.name}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
                                     style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--ios-bg)', color: 'var(--text-primary)', fontSize: '15px' }}
-                                    placeholder={clientType === 'PJ' ? 'Ex: Gabi Manutenção ME' : 'Ex: João da Silva'}
+                                    placeholder={clientType === 'PJ' ? 'Ex: Manutenção ME' : 'Ex: João da Silva'}
                                     required
                                 />
                             </div>
@@ -140,7 +203,7 @@ const AddClientModal = ({ isOpen, onClose, onSave }) => {
                                 <input
                                     type="text"
                                     value={formData.documento}
-                                    onChange={e => setFormData({ ...formData, documento: e.target.value })}
+                                    onChange={e => setFormData({ ...formData, documento: applyMask(e.target.value, clientType === 'PJ' ? 'CNPJ' : 'CPF') })}
                                     style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--ios-bg)', color: 'var(--text-primary)', fontSize: '15px' }}
                                     placeholder={clientType === 'PJ' ? '00.000.000/0001-00' : '000.000.000-00'}
                                 />
@@ -156,6 +219,8 @@ const AddClientModal = ({ isOpen, onClose, onSave }) => {
                                     </div>
                                     <input
                                         type="email"
+                                        value={formData.email}
+                                        onChange={e => setFormData({ ...formData, email: e.target.value })}
                                         style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: '16px', border: '1px solid #E5E5EA', background: '#F9F9F9', fontSize: '15px' }}
                                         placeholder="email@exemplo.com"
                                     />
@@ -170,9 +235,9 @@ const AddClientModal = ({ isOpen, onClose, onSave }) => {
                                     <input
                                         type="text"
                                         value={formData.telefone}
-                                        onChange={e => setFormData({ ...formData, telefone: e.target.value })}
+                                        onChange={e => setFormData({ ...formData, telefone: applyMask(e.target.value, 'Phone') })}
                                         style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--ios-bg)', color: 'var(--text-primary)', fontSize: '15px' }}
-                                        placeholder="(00) 00000-0000"
+                                        placeholder="(00) 0 0000-0000"
                                     />
                                 </div>
                             </div>
@@ -190,10 +255,12 @@ const AddClientModal = ({ isOpen, onClose, onSave }) => {
                                     <input
                                         type="text"
                                         className="cep-input"
+                                        value={formData.cep}
                                         onChange={(e) => {
-                                            const val = e.target.value;
-                                            setFormData(prev => ({ ...prev, cep: val }));
-                                            if (val.replace(/\D/g, '').length === 8) handleCepSearch(val);
+                                            const masked = applyMask(e.target.value, 'CEP');
+                                            setFormData(prev => ({ ...prev, cep: masked }));
+                                            const clean = masked.replace(/\D/g, '');
+                                            if (clean.length === 8) handleCepSearch(clean);
                                         }}
                                         style={{ width: '100%', padding: '12px 12px 12px 48px', borderRadius: '14px', border: '1px solid var(--border-color)', background: 'var(--ios-bg)', color: 'var(--text-primary)', fontSize: '14px' }}
                                         placeholder="00000-000"

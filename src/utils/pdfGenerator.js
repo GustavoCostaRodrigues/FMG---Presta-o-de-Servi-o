@@ -1,112 +1,238 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-/**
- * Gera um relatório em PDF para prestações de serviço.
- * @param {Object} options - Opções do relatório
- * @param {string} options.title - Título principal (ex: Cliente, Máquina ou Colaborador)
- * @param {string} options.subtitle - Subtítulo (ex: nome do cliente ou modelo da máquina)
- * @param {string} options.type - Tipo de relatório (Cliente, Maquinário, Colaborador)
- * @param {Array} options.data - Lista de serviços
- * @param {string} options.filename - Nome do arquivo resultante
- */
+// Importando a logo para uso no PDF
+import logoFazenda from '../assets/logo-fazenda.jpg';
+import logoFazendaMenor from '../assets/logomenor.png';
+
 export const generateServiceReport = ({ title, subtitle, type, data, filename }) => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+        unit: 'mm',
+        format: 'a4',
+        putOnlyUsedFonts: true
+    });
+
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Estilos de Cor (Esmeralda)
-    const emeraldColor = [0, 135, 94]; // #00875E
+    // --- Cores do Design ---
+    const colors = {
+        emeraldPrimary: [0, 135, 94], // #00875E
+        emeraldLight: [240, 249, 246],
+        emeraldFaint: [225, 238, 233],
+        grayDark: [28, 28, 30],
+        grayMedium: [142, 142, 147],
+        grayLight: [229, 229, 234],
+        white: [255, 255, 255],
+        black: [0, 0, 0],
+        pending: [255, 149, 0],
+        inProgress: [0, 122, 255],
+        paid: [52, 199, 89]
+    };
 
-    // Cabeçalho
-    doc.setFillColor(...emeraldColor);
-    doc.rect(0, 0, pageWidth, 40, 'F');
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount || 0);
+    };
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Relatório de Serviços', 20, 25);
+    const formatDate = (date) => {
+        if (!date) return '---';
+        const d = date instanceof Date ? date : new Date(date);
+        return isNaN(d.getTime()) ? '---' : format(d, 'dd/MM/yyyy');
+    };
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const today = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-    doc.text(`Gerado em: ${today}`, pageWidth - 20, 25, { align: 'right' });
+    try {
+        // --- 1. FOLHA DE ROSTO ---
+        // Fundo decorativo (barra lateral sutil)
+        doc.setFillColor(...colors.emeraldLight);
+        doc.rect(0, 0, 10, pageHeight, 'F');
 
-    // Informações do Filtro/Entidade
-    doc.setTextColor(60, 60, 60);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${type}: ${title}`, 20, 55);
-
-    if (subtitle) {
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.text(subtitle, 20, 62);
-    }
-
-    // Linha divisória
-    doc.setDrawColor(230, 230, 230);
-    doc.line(20, 70, pageWidth - 20, 70);
-
-    // Tabela de Serviços
-    const tableColumn = ["ID", "Data", "Descrição/Máquina", "Cliente/Destino", "Status", "Valor"];
-    const tableRows = data.map(service => {
-        const serviceDate = service.date ? (
-            service.date instanceof Date ? service.date : new Date(service.date)
-        ) : new Date();
-
-        const formattedDate = !isNaN(serviceDate.getTime())
-            ? format(serviceDate, 'dd/MM/yyyy')
-            : '---';
-
-        const description = service.machineName || service.machine_name || service.title || service.duration || '---';
-        const client = service.clientName || service.client_name || service.client || subtitle || '---';
-
-        // Melhorar detecção de status
-        let statusText = 'Pendente';
-        if (service.status === 'paid' || service.status === 'Concluído' || service.status === 'active') {
-            statusText = 'Pago/Ativo';
+        // Logo Centralizada
+        const logoWidth = 80;
+        const logoHeight = (284 / 896) * logoWidth;
+        try {
+            doc.addImage(logoFazenda, 'JPEG', (pageWidth - logoWidth) / 2, 60, logoWidth, logoHeight);
+        } catch (e) {
+            console.warn("Logo could not be added to cover page:", e);
         }
 
-        const amount = service.total_amount || service.totalAmount || service.valor || service.amount || 0;
-        const formattedAmount = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
+        // Título Principal
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(28);
+        doc.setTextColor(...colors.grayDark);
+        doc.text('Relatório de Serviços Prestados', pageWidth / 2, 120, { align: 'center' });
 
-        return [
-            String(service.id).startsWith('OS-') ? service.id : `OS-${service.id}`,
-            formattedDate,
-            description,
-            client,
-            statusText,
-            formattedAmount
-        ];
-    });
+        // Informações de Contexto (Filtro)
+        doc.setDrawColor(...colors.emeraldPrimary);
+        doc.setLineWidth(1);
+        doc.line(pageWidth / 4, 135, (pageWidth / 4) * 3, 135);
 
-    doc.autoTable({
-        head: [tableColumn],
-        body: tableRows,
-        startY: 80,
-        theme: 'striped',
-        headStyles: {
-            fillColor: emeraldColor,
-            textColor: [255, 255, 255],
-            fontSize: 10,
-            fontStyle: 'bold'
-        },
-        bodyStyles: { fontSize: 9 },
-        alternateRowStyles: { fillColor: [245, 248, 247] },
-        margin: { top: 80, left: 20, right: 20 }
-    });
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${type}: ${title}`, pageWidth / 2, 150, { align: 'center' });
 
-    // Rodapé
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
+        if (subtitle) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(12);
+            doc.setTextColor(...colors.grayMedium);
+            doc.text(subtitle, pageWidth / 2, 158, { align: 'center' });
+        }
+
+        // Período
+        const dates = data.map(d => new Date(d.date)).filter(d => !isNaN(d.getTime()));
+        const startDate = dates.length > 0 ? new Date(Math.min(...dates)) : null;
+        const endDate = dates.length > 0 ? new Date(Math.max(...dates)) : null;
+
+        doc.setFontSize(12);
+        doc.setTextColor(...colors.grayDark);
+        doc.setFont('helvetica', 'bold');
+        const periodText = startDate && endDate
+            ? `Período: ${formatDate(startDate)} a ${formatDate(endDate)}`
+            : 'Período: Geral';
+        doc.text(periodText, pageWidth / 2, 180, { align: 'center' });
+
+        // Resumo Rápido
+        const totalAmount = data.reduce((sum, s) => sum + (s.valor || 0), 0);
+        doc.setFontSize(14);
+        doc.text(`Total de Atividades: ${data.length}`, pageWidth / 2, 200, { align: 'center' });
+        doc.setTextColor(...colors.emeraldPrimary);
+        doc.setFontSize(18);
+        doc.text(`Valor Total: ${formatCurrency(totalAmount)}`, pageWidth / 2, 212, { align: 'center' });
+
+        // Rodapé da Capa
         doc.setFontSize(10);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
-        doc.text('AppGabi - Gestão de Serviços Técnicos', 20, doc.internal.pageSize.getHeight() - 10);
-    }
+        doc.setTextColor(...colors.grayMedium);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Fazenda Morro Grande | Gestão Operacional', pageWidth / 2, pageHeight - 20, { align: 'center' });
 
-    doc.save(filename || `relatorio-servicos-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+
+        // --- 2. LISTAGEM DE SERVIÇOS (CARDS) ---
+        doc.addPage();
+        let currentY = 45; // Aumentado para evitar sobreposição com a logo
+        const cardMargin = 8;
+        const cardWidth = pageWidth - 40;
+        const cardHeight = 45;
+
+        // Cabeçalho Interno (Logo e Título)
+        const drawPageHeader = () => {
+            const smLogoW = 25;
+            // Passar 0 para altura faz o jsPDF manter a proporção original da imagem
+            try {
+                doc.addImage(logoFazendaMenor, 'PNG', 20, 10, smLogoW, 0);
+            } catch (e) {
+                console.warn("Logo could not be added to page header:", e);
+            }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(...colors.black);
+            doc.text('DETALHAMENTO DE ATIVIDADES', pageWidth - 20, 22, { align: 'right' });
+            doc.setDrawColor(...colors.grayLight);
+            doc.setLineWidth(0.2);
+            doc.line(20, 38, pageWidth - 20, 38); // Linha abaixo da logo
+        };
+
+        const drawFooter = (pageNumber, totalPages) => {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(...colors.grayMedium);
+            doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.text('F.M.G - Agronegócios', 20, pageHeight - 10);
+        };
+
+        drawPageHeader();
+
+        data.forEach((service, index) => {
+            if (currentY + cardHeight > pageHeight - 20) {
+                doc.addPage();
+                drawPageHeader();
+                currentY = 45; // Reseta para nova página
+            }
+
+            // Desenhar Card
+            const x = 20;
+            const y = currentY;
+            const radius = 6;
+
+            // Shadow
+            doc.setFillColor(0, 0, 0, 0.02);
+            doc.roundedRect(x + 1, y + 1, cardWidth, cardHeight, radius, radius, 'F');
+
+            // Border and Background
+            doc.setFillColor(...colors.white);
+            doc.setDrawColor(...colors.grayLight);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(x, y, cardWidth, cardHeight, radius, radius, 'FD');
+
+            // Status Line
+            const statusColor = service.status === 'paid' ? colors.paid :
+                service.status === 'in_progress' ? colors.inProgress : colors.pending;
+            doc.setFillColor(...statusColor);
+            // Fix: Standard roundedRect arguments (x, y, w, h, rx, ry, style)
+            doc.roundedRect(x, y, 4, cardHeight, radius, radius, 'F');
+            // Overlay a rectangle to make right side of status bar square if needed, 
+            // but for simplicity we'll just round all and it looks fine.
+            doc.rect(x + 2, y, 2, cardHeight, 'F');
+
+            // ID e Data
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...colors.grayMedium);
+            const displayId = String(service.id).length > 12 ? `OS-${String(service.id).slice(0, 8)}` : service.id;
+            doc.text(String(displayId), x + 10, y + 10);
+            doc.text(formatDate(service.date), pageWidth - 30, y + 10, { align: 'right' });
+
+            // Título e Categoria
+            doc.setFontSize(11);
+            doc.setTextColor(...colors.grayDark);
+            doc.setFont('helvetica', 'bold');
+            const descText = (service.serviceTypeName || service.title || 'Atividade Especial').toUpperCase();
+            doc.text(descText, x + 10, y + 18);
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...colors.grayMedium);
+            doc.text(`Máquina: ${service.machineName || '---'}`, x + 10, y + 24);
+            doc.text(`Cliente: ${service.clientName || '---'}`, x + 10, y + 29);
+
+            // Técnicos
+            doc.setFont('helvetica', 'italic');
+            doc.text(`Equipe: ${service.collaboratorName || '---'}`, x + 10, y + 36);
+
+            // Badge de Status
+            const statusName = service.status === 'paid' ? 'CONCLUÍDA' :
+                service.status === 'in_progress' ? 'EXECUTANDO' : 'EM ABERTO';
+
+            const badgeWidth = doc.getTextWidth(statusName) + 6;
+            doc.setFillColor(...statusColor);
+            doc.roundedRect(pageWidth - 25 - badgeWidth, y + 14, badgeWidth, 6, 2, 2, 'F');
+            doc.setTextColor(...colors.white);
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.text(statusName, pageWidth - 25 - (badgeWidth / 2), y + 18, { align: 'center' });
+
+            // Valor e Duração
+            doc.setFontSize(12);
+            doc.setTextColor(...colors.emeraldPrimary);
+            doc.text(formatCurrency(service.valor), pageWidth - 30, y + 32, { align: 'right' });
+
+            doc.setFontSize(9);
+            doc.setTextColor(...colors.grayMedium);
+            doc.text(`${service.duration || 0}h trabalhadas`, pageWidth - 30, y + 38, { align: 'right' });
+
+            currentY += cardHeight + cardMargin;
+        });
+
+        // Aplicar rodapés
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            drawFooter(i, totalPages);
+        }
+
+        doc.save(filename || `relatorio-fazenda-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    } catch (error) {
+        console.error("Critical error generating PDF:", error);
+        alert("Erro ao gerar o PDF. Verifique o console para mais detalhes.");
+    }
 };

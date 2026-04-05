@@ -9,6 +9,7 @@ import AddCollaboratorModal from '../components/AddCollaboratorModal';
 import { db } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSync } from '../context/SyncContext';
+import EmptyState from '../components/EmptyState';
 
 const Collaborators = () => {
     const navigate = useNavigate();
@@ -119,72 +120,80 @@ const Collaborators = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {filteredCollaborators.map((colab) => (
-                            <div
-                                key={colab.id}
-                                onClick={() => navigate(`/colaboradores/${colab.id}`)}
-                                style={{
-                                    padding: '12px 16px',
-                                    display: 'grid',
-                                    gridTemplateColumns: '2fr 1.5fr 1fr 1fr 40px',
-                                    alignItems: 'center',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    borderRadius: '20px',
-                                    margin: '0 8px'
-                                }}
-                                onMouseEnter={e => {
-                                    e.currentTarget.style.backgroundColor = '#F2F2F7';
-                                    e.currentTarget.style.transform = 'translateX(4px)';
-                                }}
-                                onMouseLeave={e => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                    e.currentTarget.style.transform = 'translateX(0)';
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    <div style={{
-                                        width: '48px', height: '48px', borderRadius: '16px',
-                                        backgroundColor: 'var(--ios-bg)', display: 'flex', alignItems: 'center',
-                                        justifyContent: 'center', color: 'var(--brand-primary)', fontWeight: 800,
-                                        fontSize: '18px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
-                                    }}>
-                                        {colab.name.charAt(0)}
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '15px' }}>{colab.name}</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
-                                            <Mail size={12} />
-                                            <span style={{ fontSize: '12px' }}>{colab.email}</span>
+                        {filteredCollaborators.length === 0 ? (
+                            <EmptyState
+                                icon={HardHat}
+                                title="Nenhum colaborador cadastrado"
+                                description="Sua equipe ainda não possui colaboradores registrados. Adicione técnicos e engenheiros para gerenciar o time."
+                            />
+                        ) : (
+                            filteredCollaborators.map((colab) => (
+                                <div
+                                    key={colab.id}
+                                    onClick={() => navigate(`/colaboradores/${colab.id}`)}
+                                    style={{
+                                        padding: '12px 16px',
+                                        display: 'grid',
+                                        gridTemplateColumns: '2fr 1.5fr 1fr 1fr 40px',
+                                        alignItems: 'center',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        borderRadius: '20px',
+                                        margin: '0 8px'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.backgroundColor = '#F2F2F7';
+                                        e.currentTarget.style.transform = 'translateX(4px)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                        e.currentTarget.style.transform = 'translateX(0)';
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                        <div style={{
+                                            width: '48px', height: '48px', borderRadius: '16px',
+                                            backgroundColor: 'var(--ios-bg)', display: 'flex', alignItems: 'center',
+                                            justifyContent: 'center', color: 'var(--brand-primary)', fontWeight: 800,
+                                            fontSize: '18px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                                        }}>
+                                            {colab.name.charAt(0)}
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '15px' }}>{colab.name}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
+                                                <Mail size={12} />
+                                                <span style={{ fontSize: '12px' }}>{colab.email}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <span style={{ fontWeight: 600, color: '#48484A', fontSize: '14px' }}>{colab.role}</span>
-                                <div>
-                                    <span style={{
-                                        padding: '6px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 800,
-                                        backgroundColor: colab.status === 'Ativo' ? '#E8F5E9' : '#FFF3E0',
-                                        color: colab.status === 'Ativo' ? '#2E7D32' : '#EF6C00',
-                                        display: 'inline-flex', alignItems: 'center', gap: '4px'
-                                    }}>
-                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'currentColor' }} />
-                                        {colab.status.toUpperCase()}
-                                    </span>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        {colab.sync_status !== 'synced' && <Clock size={12} color="#FF9500" />}
-                                        <span style={{ fontSize: '11px', color: colab.sync_status !== 'synced' ? '#FF9500' : 'var(--text-secondary)' }}>
-                                            {colab.sync_status === 'synced' ? 'Sincronizado' : 'Offline'}
+                                    <span style={{ fontWeight: 600, color: '#48484A', fontSize: '14px' }}>{colab.role}</span>
+                                    <div>
+                                        <span style={{
+                                            padding: '6px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 800,
+                                            backgroundColor: colab.status === 'Ativo' ? '#E8F5E9' : '#FFF3E0',
+                                            color: colab.status === 'Ativo' ? '#2E7D32' : '#EF6C00',
+                                            display: 'inline-flex', alignItems: 'center', gap: '4px'
+                                        }}>
+                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'currentColor' }} />
+                                            {colab.status.toUpperCase()}
                                         </span>
                                     </div>
-                                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Última OS</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {colab.sync_status !== 'synced' && <Clock size={12} color="#FF9500" />}
+                                            <span style={{ fontSize: '11px', color: colab.sync_status !== 'synced' ? '#FF9500' : 'var(--text-secondary)' }}>
+                                                {colab.sync_status === 'synced' ? 'Sincronizado' : 'Offline'}
+                                            </span>
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Última OS</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: '12px' }}>
+                                        <ChevronRight size={18} color="#C7C7CC" />
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: '12px' }}>
-                                    <ChevronRight size={18} color="#C7C7CC" />
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
             </main>

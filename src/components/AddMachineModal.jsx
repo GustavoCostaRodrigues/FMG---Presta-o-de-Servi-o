@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Box, Settings, Cpu, Calendar, Building2, Check, FileText, Clock } from 'lucide-react';
 import { db, SYNC_STATUS } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSync } from '../context/SyncContext';
 
 const AddMachineModal = ({ isOpen, onClose, onSave }) => {
+    const { syncWithServer } = useSync();
     const [formData, setFormData] = useState({
         nome: '',
         modelo: '',
@@ -29,6 +31,7 @@ const AddMachineModal = ({ isOpen, onClose, onSave }) => {
                 created_at: new Date().toISOString()
             });
             onSave();
+            syncWithServer();
         } catch (error) {
             console.error("Erro ao salvar máquina:", error);
         }

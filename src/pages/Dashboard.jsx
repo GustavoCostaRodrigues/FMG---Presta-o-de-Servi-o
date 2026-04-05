@@ -1,25 +1,34 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Plus, CheckCircle2, Clock, Search, X, Menu, Eye, FileText, Filter, Pencil, Wallet, Trash2, Info, Wrench, Users, Box
+    Plus, CheckCircle2, Clock, Search, X, Menu, Eye, FileText, Filter, Pencil, Wallet, Trash2, Info, Wrench, Users, Box,
+    RefreshCw as SyncIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 import Sidebar from '../components/Sidebar';
 import './Dashboard.css';
-import { db } from '../lib/db';
+import { db, SYNC_STATUS } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSync } from '../context/SyncContext';
 import { generateServiceReport } from '../utils/pdfGenerator';
 import AddServiceModal from '../components/AddServiceModal';
+import { useAuth } from '../context/AuthContext';
+import EmptyState from '../components/EmptyState';
+import { enrichServiceData } from '../utils/serviceHelpers';
+
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const { isOnline, syncWithServer } = useSync();
+    const { user } = useAuth();
 
-    const userName = "Gustavo";
+    const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
+
     const [selectedFilter, setSelectedFilter] = useState('all');
 
     const availableMonths = useLiveQuery(async () => {
@@ -54,16 +63,36 @@ const Dashboard = () => {
 
     const filterOptions = getFilterOptions();
 
-    // Buscar estatísticas reais do Dexie
-    const servicesCount = useLiveQuery(() => db.services.count()) || 0;
-    const clientsCount = useLiveQuery(() => db.clients.count()) || 0;
-    const machinesCount = useLiveQuery(() => db.machinery.count()) || 0;
+    // Buscar estatísticas reais do Dexie (filtrando deletados e lixo)
+    const servicesCount = useLiveQuery(() => db.services.filter(s => s.sync_status !== SYNC_STATUS.PENDING_DELETE).count()) || 0;
+    const clientsCount = useLiveQuery(() => db.clients.filter(c => c.sync_status !== SYNC_STATUS.PENDING_DELETE).count()) || 0;
+    const machinesCount = useLiveQuery(() => db.machinery.filter(m => m.sync_status !== SYNC_STATUS.PENDING_DELETE).count()) || 0;
+
+    // Buscar nomes dos tipos de serviço para exibição
+    const serviceTypes = useLiveQuery(() => db.service_types.toArray()) || [];
+    const serviceTypeMap = React.useMemo(() => {
+        const map = {};
+        serviceTypes.forEach(t => { map[t.id] = t.name; });
+        return map;
+    }, [serviceTypes]);
+
+    const clients = useLiveQuery(() => db.clients.toArray()) || [];
+    const clientMap = React.useMemo(() => {
+        const map = {};
+        clients.forEach(c => { map[c.id] = c.name; });
+        return map;
+    }, [clients]);
 
     // Buscar serviços com base no filtro
     const services = useLiveQuery(
         async () => {
             if (selectedFilter === 'all') {
-                return db.services.orderBy('date').reverse().limit(50).toArray();
+                return db.services
+                    .orderBy('date')
+                    .reverse()
+                    .filter(s => s.sync_status !== SYNC_STATUS.PENDING_DELETE)
+                    .limit(50)
+                    .toArray();
             }
             const [month, year] = selectedFilter.split('-').map(Number);
             const startDate = new Date(year, month - 1, 1).toISOString();
@@ -73,6 +102,7 @@ const Dashboard = () => {
                 .where('date')
                 .between(startDate, endDate)
                 .reverse()
+                .filter(s => s.sync_status !== SYNC_STATUS.PENDING_DELETE)
                 .toArray();
         },
         [selectedFilter]
@@ -81,13 +111,17 @@ const Dashboard = () => {
     const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
 
-    const handleGenerateReport = () => {
+    const handleGenerateReport = async () => {
         const filterLabel = filterOptions.find(opt => opt.value === selectedFilter)?.label || 'Geral';
+
+        // Enriquecer dados antes de gerar PDF para mostrar nomes em vez de IDs
+        const enrichedData = await enrichServiceData(services);
+
         generateServiceReport({
             title: `Resumo de Atividades - ${filterLabel}`,
-            subtitle: `Total de ${services.length} registros encontrados`,
+            subtitle: `Total de ${enrichedData.length} registros encontrados`,
             type: 'Período',
-            data: services,
+            data: enrichedData,
             filename: `relatorio-dashboard-${selectedFilter}.pdf`
         });
     };
@@ -172,21 +206,36 @@ const Dashboard = () => {
 
                     <div className="bills-list">
                         {services.length === 0 ? (
-                            <div className="no-data-placeholder">Nenhum serviço registrado recentemente.</div>
+                            <EmptyState
+                                icon={FileText}
+                                title="Nenhum serviço registrado"
+                                description="Você ainda não possui atendimentos cadastrados. Comece criando um novo serviço pelo botão acima."
+                            />
                         ) : (
                             services.map(item => (
                                 <div key={item.id} className="bill-card">
-                                    <div className={`bill-status-indicator ${item.status === 'paid' ? 'paid' : 'pending'}`}>
-                                        {item.status === 'paid' ? <CheckCircle2 size={20} /> : <Clock size={20} />}
+                                    <div className={`bill-status-indicator ${item.status === 'paid' ? 'paid' : item.status === 'in_progress' ? 'in-progress' : 'pending'}`}>
+                                        {item.status === 'paid' ? <CheckCircle2 size={20} /> :
+                                            item.status === 'in_progress' ? <SyncIcon size={20} className="spin" /> :
+                                                <Clock size={20} />}
                                     </div>
 
                                     <div className="bill-info-group">
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span className="bill-title">{item.id} - {item.title}</span>
-                                            {item.sync_status !== 'synced' && <Clock size={12} color="#FF9500" />}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '8px' }}>
+                                            <span style={{ fontWeight: 800, color: '#1C1C1E', fontSize: '15px' }}>
+                                                {serviceTypeMap[item.service_type_id] || 'Serviço Geral'} - {clientMap[item.client_id] || 'Sem Cliente'}
+                                            </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontWeight: 600, color: 'var(--brand-primary)', fontSize: '11px', opacity: 0.8 }}>
+                                                    ID: {item.id}
+                                                </span>
+                                                {item.sync_status !== 'synced' && <Clock size={10} color="#FF9500" />}
+                                            </div>
                                         </div>
-                                        <span className="bill-date">Status Sincronização: {item.sync_status === 'synced' ? 'Nuvem' : 'Local'}</span>
-                                        <span className="bill-created">Executado em: {format(new Date(item.date), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                                        <span className="bill-date" style={{ fontSize: '11px' }}>Status Sincronização: {item.sync_status === 'synced' ? 'Nuvem' : 'Local'}</span>
+                                        <span className="bill-created" style={{ fontSize: '12px', fontWeight: 500, color: '#8E8E93' }}>
+                                            Executado em: {format(new Date(item.date), "dd/MM/yyyy", { locale: ptBR })}
+                                        </span>
                                     </div>
 
                                     <div className="bill-amount-group">
@@ -194,7 +243,7 @@ const Dashboard = () => {
                                     </div>
 
                                     <div className="bill-actions">
-                                        <button className="view-receipt-btn">
+                                        <button className="view-receipt-btn" onClick={() => navigate(`/historico/${item.id}`)}>
                                             <Eye size={16} /> <span>Visualizar</span>
                                         </button>
                                     </div>

@@ -10,6 +10,7 @@ import './Machinery.css';
 import { db } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSync } from '../context/SyncContext';
+import EmptyState from '../components/EmptyState';
 
 const Machinery = () => {
     const navigate = useNavigate();
@@ -23,7 +24,7 @@ const Machinery = () => {
         () => db.machinery
             .filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 m.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                m.serial.toLowerCase().includes(searchQuery.toLowerCase()))
+                (m.serial_number && m.serial_number.toLowerCase().includes(searchQuery.toLowerCase())))
             .toArray(),
         [searchQuery]
     );
@@ -73,6 +74,12 @@ const Machinery = () => {
                 <div className="machinery-container fade-in">
                     {!machines ? (
                         <div className="loader-container">Carregando...</div>
+                    ) : machines.length === 0 ? (
+                        <EmptyState
+                            icon={Box}
+                            title="Nenhum maquinário registrado"
+                            description="Você ainda não cadastrou nenhuma máquina ou equipamento. Comece adicionando o maquinário dos seus clientes."
+                        />
                     ) : (
                         <div className="machinery-grid">
                             {machines.map(machine => (
@@ -95,12 +102,7 @@ const Machinery = () => {
 
                                     <div className="machine-info-item">
                                         <Settings size={16} />
-                                        <span>Serial: {machine.serial}</span>
-                                    </div>
-
-                                    <div className="machine-info-item">
-                                        <Building2 size={16} />
-                                        <span>Cliente: {machine.client}</span>
+                                        <span>Série: {machine.serial_number || '---'}</span>
                                     </div>
 
                                     <div className="machine-card-footer">

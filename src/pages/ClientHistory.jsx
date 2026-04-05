@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ChevronLeft, CheckCircle2, Clock, Eye, Pencil, Trash2,
-    Download, Calendar, User, Building2, FileText
+    Download, Calendar, User, Building2, FileText,
+    Mail, Phone, MapPin
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { format } from 'date-fns';
@@ -10,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { generateServiceReport } from '../utils/pdfGenerator';
 import { db } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { enrichServiceData } from '../utils/serviceHelpers';
 
 const ClientHistory = () => {
     const { id } = useParams();
@@ -24,13 +26,16 @@ const ClientHistory = () => {
 
     const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-    const handleGenerateReport = () => {
+    const handleGenerateReport = async () => {
         if (!clientInfo) return;
+
+        const enrichedData = await enrichServiceData(services);
+
         generateServiceReport({
             title: clientInfo.name,
             subtitle: `${clientInfo.type}: ${clientInfo.document}`,
             type: 'Cliente',
-            data: services,
+            data: enrichedData,
             filename: `relatorio-cliente-${clientInfo.name.toLowerCase().replace(/ /g, '-')}.pdf`
         });
     };
@@ -55,13 +60,33 @@ const ClientHistory = () => {
                                 <h2 className="greeting">Histórico de Serviços</h2>
                             </div>
 
-                            <div className="balance-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px' }}>
-                                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {clientInfo.type === 'PJ' ? <Building2 size={32} /> : <User size={32} />}
+                            <div className="balance-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '32px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        {clientInfo.type === 'PJ' ? <Building2 size={32} /> : <User size={32} />}
+                                    </div>
+                                    <div>
+                                        <h3 style={{ fontSize: '24px', fontWeight: 800, margin: 0 }}>{clientInfo.name}</h3>
+                                        <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', margin: '4px 0 0 0', fontWeight: 600 }}>{clientInfo.type}: {clientInfo.document}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{clientInfo.name}</h3>
-                                    <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', margin: '4px 0 0 0' }}>{clientInfo.type}: {clientInfo.document}</p>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <Mail size={16} color="rgba(255,255,255,0.7)" />
+                                        <span style={{ fontSize: '14px' }}>{clientInfo.email || 'Email não informado'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <Phone size={16} color="rgba(255,255,255,0.7)" />
+                                        <span style={{ fontSize: '14px' }}>{clientInfo.phone || 'Telefone não informado'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', gridColumn: '1 / -1' }}>
+                                        <MapPin size={16} color="rgba(255,255,255,0.7)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                                        <span style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                            {clientInfo.rua ? `${clientInfo.rua}, ${clientInfo.numero || 'S/N'} - ${clientInfo.bairro}, ${clientInfo.cidade} - ${clientInfo.estado}${clientInfo.cep ? ` | CEP: ${clientInfo.cep}` : ''}` : 'Endereço não informado'}
+                                            {clientInfo.complemento && ` (${clientInfo.complemento})`}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </header>
@@ -92,7 +117,7 @@ const ClientHistory = () => {
                                                     <span className="bill-title">{String(item.id).startsWith('OS-') ? item.id : `OS-${item.id}`} - {item.duration || 'Serviço'}</span>
                                                     {item.sync_status !== 'synced' && <Clock size={12} color="#FF9500" />}
                                                 </div>
-                                                <span className="bill-created">Executado em: {format(new Date(item.date), "dd/MM/yyyy", { locale: ptBR })}</span>
+                                                <span className="bill-created">Executado em: {item.date && !isNaN(new Date(item.date)) ? format(new Date(item.date), "dd/MM/yyyy", { locale: ptBR }) : 'Data não informada'}</span>
                                             </div>
 
                                             <div className="bill-amount-group">

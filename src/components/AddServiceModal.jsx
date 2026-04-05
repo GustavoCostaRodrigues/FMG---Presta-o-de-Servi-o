@@ -7,18 +7,44 @@ import {
 } from 'lucide-react';
 import { db, SYNC_STATUS } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSync } from '../context/SyncContext';
+import { supabase } from '../lib/supabase';
 
 const AddServiceModal = ({ isOpen, onClose, onSave }) => {
+    const { syncWithServer } = useSync();
     const [formData, setFormData] = useState({
         customerId: '',
         machineryId: '',
         serviceTypeId: '',
         date: new Date().toISOString().split('T')[0],
         duration: '',
-        locationArea: '',
+        description: '',
+        areaValue: '',
+        areaUnit: 'm²',
         totalAmount: '',
         paymentType: 'diaria'
     });
+
+    // Helper para converter "4h 30m" em decimal (4.5)
+    const parseDurationToHours = (text) => {
+        if (!text) return 0;
+
+        // Regex para extrair horas e minutos
+        const hoursMatch = text.match(/(\d+)\s*h/i);
+        const minsMatch = text.match(/(\d+)\s*m/i);
+
+        let totalHours = 0;
+        if (hoursMatch) totalHours += parseInt(hoursMatch[1]);
+        if (minsMatch) totalHours += parseInt(minsMatch[1]) / 60;
+
+        // Se não houver 'h' ou 'm', tenta ver se é apenas um número
+        if (!hoursMatch && !minsMatch) {
+            const num = parseFloat(text.replace(',', '.'));
+            if (!isNaN(num)) return num;
+        }
+
+        return totalHours;
+    };
 
     const [selectedStaff, setSelectedStaff] = useState([]);
 
@@ -30,21 +56,51 @@ const AddServiceModal = ({ isOpen, onClose, onSave }) => {
     const handleSave = async (e) => {
         e.preventDefault();
         try {
-            await db.services.add({
-                customer_id: parseInt(formData.customerId),
-                machinery_id: parseInt(formData.machineryId),
-                collaborator_id: selectedStaff[0] || null, // Assuming one for now as per simple join
-                service_type_id: parseInt(formData.serviceTypeId),
+            const workedHours = parseDurationToHours(formData.duration);
+            const totalSalary = parseFloat(formData.totalAmount.replace(',', '.')) || 0;
+            const workedHH = workedHours > 0 ? totalSalary / workedHours : 0;
+
+            const customer_id = parseInt(formData.customerId) || null;
+            const machinery_id = parseInt(formData.machineryId) || null;
+            const service_type_id = parseInt(formData.serviceTypeId) || null;
+
+            const serviceData = {
+                id: crypto.randomUUID(),
+                title: formData.description || '',
+                client_id: customer_id,
+                machine_id: machinery_id,
+                technician_id: selectedStaff[0] || null,
+                service_type_id: service_type_id,
                 date: formData.date,
                 duration: formData.duration,
-                location_area: formData.locationArea,
-                total_amount: parseFloat(formData.totalAmount.replace(',', '.')),
-                payment_type: formData.paymentType,
-                status: 'pending',
-                sync_status: SYNC_STATUS.PENDING_CREATE,
+                area: formData.areaValue ? `${formData.areaValue} ${formData.areaUnit}` : '',
+                valor: totalSalary,
+                valor_hh: workedHH || 0,
+                status: 'paid',
                 created_at: new Date().toISOString()
+            };
+
+            // Tenta enviar direto pro Supabase se estiver online
+            let syncStatus = SYNC_STATUS.PENDING_CREATE;
+
+            try {
+                const { error } = await supabase.from('services').insert([serviceData]);
+                if (!error) {
+                    syncStatus = SYNC_STATUS.SYNCED;
+                    console.log("✅ Serviço salvo diretamente no servidor!");
+                } else {
+                    console.warn("⚠️ Falha no envio direto de serviço:", error);
+                }
+            } catch (err) {
+                console.error("Erro na tentativa de push direto:", err);
+            }
+
+            await db.services.add({
+                ...serviceData,
+                sync_status: syncStatus
             });
             onSave();
+            syncWithServer();
         } catch (error) {
             console.error("Erro ao salvar serviço:", error);
         }
@@ -227,18 +283,48 @@ const AddServiceModal = ({ isOpen, onClose, onSave }) => {
 
                             <div className="input-group">
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#1C1C1E', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Área do Local</label>
-                                <div style={{ position: 'relative' }}>
-                                    <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--brand-primary)' }}>
-                                        <MapPin size={18} />
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <div style={{ position: 'relative', flex: 1 }}>
+                                        <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--brand-primary)' }}>
+                                            <MapPin size={18} />
+                                        </div>
+                                        <input
+                                            type="number"
+                                            placeholder="Ex: 500"
+                                            value={formData.areaValue}
+                                            onChange={e => setFormData({ ...formData, areaValue: e.target.value })}
+                                            style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: '16px', border: '1px solid #E5E5EA', background: '#F9F9F9', fontSize: '15px' }}
+                                        />
                                     </div>
-                                    <input
-                                        type="text"
-                                        placeholder="Ex: Galpão A / Setor 2"
-                                        value={formData.locationArea}
-                                        onChange={e => setFormData({ ...formData, locationArea: e.target.value })}
-                                        style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: '16px', border: '1px solid #E5E5EA', background: '#F9F9F9', fontSize: '15px' }}
-                                    />
+                                    <select
+                                        value={formData.areaUnit}
+                                        onChange={e => setFormData({ ...formData, areaUnit: e.target.value })}
+                                        style={{ width: '120px', padding: '14px', borderRadius: '16px', border: '1px solid #E5E5EA', background: '#F9F9F9', fontSize: '15px', cursor: 'pointer' }}
+                                    >
+                                        <option value="m²">m²</option>
+                                        <option value="hectare">Hectare</option>
+                                    </select>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Nova Seção: Descrição / Observações */}
+                        <div className="input-group">
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#1C1C1E', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Descrição Técnica / Observações</label>
+                            <div style={{ position: 'relative' }}>
+                                <div style={{ position: 'absolute', left: '16px', top: '16px', color: 'var(--brand-primary)' }}>
+                                    <FileText size={18} />
+                                </div>
+                                <textarea
+                                    placeholder="Descreva detalhadamente o serviço realizado..."
+                                    value={formData.description}
+                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    style={{
+                                        width: '100%', padding: '14px 14px 14px 48px', borderRadius: '16px', border: '1px solid #E5E5EA',
+                                        background: '#F9F9F9', fontSize: '15px', minHeight: '100px', resize: 'vertical',
+                                        fontFamily: 'inherit'
+                                    }}
+                                />
                             </div>
                         </div>
 

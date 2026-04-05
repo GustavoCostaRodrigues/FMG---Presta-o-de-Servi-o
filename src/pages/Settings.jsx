@@ -1,27 +1,47 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Sliders, ChevronRight } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
-import { db } from '../lib/db';
+import { db, SYNC_STATUS } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSync } from '../context/SyncContext';
 
 const Settings = () => {
+    const { syncWithServer } = useSync();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [newType, setNewType] = useState('');
-    const types = useLiveQuery(() => db.service_types.toArray()) || [];
+    const allTypes = useLiveQuery(() => db.service_types.toArray()) || [];
+    const types = allTypes.filter(t => t.sync_status !== SYNC_STATUS.PENDING_DELETE);
 
     const handleAddType = async () => {
         if (!newType.trim()) return;
         try {
-            await db.service_types.add({ name: newType.trim() });
+            await db.service_types.add({
+                name: newType.trim(),
+                sync_status: SYNC_STATUS.PENDING_CREATE,
+                created_at: new Date().toISOString()
+            });
             setNewType('');
+            syncWithServer(); // Sincronismo imediato se online
         } catch (error) {
             console.error("Erro ao adicionar tipo:", error);
         }
     };
 
     const handleDeleteType = async (id) => {
+        const type = await db.service_types.get(id);
+        if (!type) return;
+
         try {
-            await db.service_types.delete(id);
+            // Se for novo e ainda não sincronizou, pode deletar direto
+            if (type.sync_status === SYNC_STATUS.PENDING_CREATE && !type.id.toString().includes('-')) {
+                // IDs numéricos vêm do Dexie, mas o server os gera como bigint.
+                // Na vdd, o ideal é marcar como PENDING_DELETE de qualquer forma se tiver ID no server.
+                // Mas se for puramente local, deleta direto.
+                await db.service_types.delete(id);
+            } else {
+                await db.service_types.update(id, { sync_status: SYNC_STATUS.PENDING_DELETE });
+            }
+            syncWithServer(); // Sincronismo imediato se online
         } catch (error) {
             console.error("Erro ao excluir tipo:", error);
         }

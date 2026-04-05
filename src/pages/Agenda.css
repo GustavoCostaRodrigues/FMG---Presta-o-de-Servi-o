@@ -347,6 +347,9 @@
     font-size: 12px;
     font-weight: 800;
     color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .service-card-client {

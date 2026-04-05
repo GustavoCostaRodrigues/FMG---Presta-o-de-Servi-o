@@ -10,6 +10,7 @@ export const SyncProvider = ({ children }) => {
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSync, setLastSync] = useState(null);
+    const syncInProgressRef = React.useRef(false);
 
     // Monitorar status da rede
     useEffect(() => {
@@ -47,12 +48,22 @@ export const SyncProvider = ({ children }) => {
                 supabase.from('services').select('*')
             ]);
 
-            // Atualizar Dexie (apenas se não houver erro no fetch)
-            if (clients) await db.clients.bulkPut(clients.map(c => ({ ...c, sync_status: SYNC_STATUS.SYNCED })));
-            if (machinery) await db.machinery.bulkPut(machinery.map(m => ({ ...m, sync_status: SYNC_STATUS.SYNCED })));
-            if (collaborators) await db.collaborators.bulkPut(collaborators.map(c => ({ ...c, sync_status: SYNC_STATUS.SYNCED })));
-            if (serviceTypes) await db.service_types.bulkPut(serviceTypes.map(t => ({ ...t, sync_status: SYNC_STATUS.SYNCED })));
-            if (services) await db.services.bulkPut(services.map(s => ({ ...s, sync_status: SYNC_STATUS.SYNCED })));
+            // 1. Limpar registros locais que já foram sincronizados (para evitar duplicidade ou lixo)
+            // Isso garante que se o servidor estiver vazio, o local também ficará (espelhamento real)
+            await Promise.all([
+                db.clients.where('sync_status').equals(SYNC_STATUS.SYNCED).delete(),
+                db.machinery.where('sync_status').equals(SYNC_STATUS.SYNCED).delete(),
+                db.collaborators.where('sync_status').equals(SYNC_STATUS.SYNCED).delete(),
+                db.service_types.where('sync_status').equals(SYNC_STATUS.SYNCED).delete(),
+                db.services.where('sync_status').equals(SYNC_STATUS.SYNCED).delete()
+            ]);
+
+            // 2. Inserir dados frescos do servidor
+            if (clients?.length > 0) await db.clients.bulkAdd(clients.map(c => ({ ...c, sync_status: SYNC_STATUS.SYNCED })));
+            if (machinery?.length > 0) await db.machinery.bulkAdd(machinery.map(m => ({ ...m, sync_status: SYNC_STATUS.SYNCED })));
+            if (collaborators?.length > 0) await db.collaborators.bulkAdd(collaborators.map(c => ({ ...c, sync_status: SYNC_STATUS.SYNCED })));
+            if (serviceTypes?.length > 0) await db.service_types.bulkAdd(serviceTypes.map(t => ({ ...t, sync_status: SYNC_STATUS.SYNCED })));
+            if (services?.length > 0) await db.services.bulkAdd(services.map(s => ({ ...s, sync_status: SYNC_STATUS.SYNCED })));
 
             console.log('✅ Dados atualizados com o servidor!');
             setLastSync(new Date());
@@ -63,80 +74,126 @@ export const SyncProvider = ({ children }) => {
 
     // Sincronizar alterações pendentes com o servidor
     const syncWithServer = useCallback(async () => {
-        if (!isOnline || isSyncing || !isAuthenticated) return;
+        if (!isOnline || isSyncing || !isAuthenticated || syncInProgressRef.current) return;
 
         try {
+            syncInProgressRef.current = true;
             setIsSyncing(true);
             console.log('Iniciando sincronização...');
 
-            // 1. Sincronizar Clientes
-            const pendingClients = await db.clients
-                .filter(c => c.sync_status !== SYNC_STATUS.SYNCED)
-                .toArray();
+            // Função auxiliar para deletar registros no Supabase
+            const processDeletions = async (tableName, storeName) => {
+                const toDelete = await db[storeName]
+                    .filter(item => item.sync_status === SYNC_STATUS.PENDING_DELETE)
+                    .toArray();
 
-            if (pendingClients.length > 0) {
-                console.log(`Sincronizando ${pendingClients.length} clientes...`);
-                const { error } = await supabase.rpc('sync_clients', { p_clients: pendingClients });
-                if (error) throw error;
-                await Promise.all(pendingClients.map(c =>
-                    db.clients.update(c.id, { sync_status: SYNC_STATUS.SYNCED })
-                ));
+                if (toDelete.length > 0) {
+                    console.log(`Excluindo ${toDelete.length} registros de ${tableName} no servidor...`);
+                    for (const item of toDelete) {
+                        const { error } = await supabase.from(tableName).delete().eq('id', item.id);
+                        if (!error || error.code === 'PGRST116') {
+                            await db[storeName].delete(item.id);
+                        } else {
+                            console.error(`Erro ao excluir ${tableName} ${item.id}:`, error);
+                        }
+                    }
+                }
+            };
+
+            // 0. Processar Exclusões Pendentes
+            await processDeletions('clients', 'clients');
+            await processDeletions('machinery', 'machinery');
+            await processDeletions('collaborators', 'collaborators');
+            await processDeletions('service_types', 'service_types');
+            await processDeletions('services', 'services');
+
+            // 1. Sincronizar Clientes
+            try {
+                const pendingClients = await db.clients
+                    .filter(c => [SYNC_STATUS.PENDING_CREATE, SYNC_STATUS.PENDING_UPDATE].includes(c.sync_status))
+                    .toArray();
+                if (pendingClients.length > 0) {
+                    console.log(`Sincronizando ${pendingClients.length} clientes...`);
+                    const { error } = await supabase.rpc('sync_clients', { p_clients: pendingClients });
+                    if (error) throw error;
+                    await Promise.all(pendingClients.map(c =>
+                        db.clients.update(c.id, { sync_status: SYNC_STATUS.SYNCED })
+                    ));
+                }
+            } catch (err) {
+                console.error('Erro ao sincronizar clientes:', err);
             }
 
             // 2. Sincronizar Maquinário
-            const pendingMachinery = await db.machinery
-                .filter(m => m.sync_status !== SYNC_STATUS.SYNCED)
-                .toArray();
-
-            if (pendingMachinery.length > 0) {
-                console.log(`Sincronizando ${pendingMachinery.length} máquinas...`);
-                const { error } = await supabase.rpc('sync_machinery', { p_machinery: pendingMachinery });
-                if (error) throw error;
-                await Promise.all(pendingMachinery.map(m =>
-                    db.machinery.update(m.id, { sync_status: SYNC_STATUS.SYNCED })
-                ));
+            try {
+                const pendingMachinery = await db.machinery
+                    .filter(m => [SYNC_STATUS.PENDING_CREATE, SYNC_STATUS.PENDING_UPDATE].includes(m.sync_status))
+                    .toArray();
+                if (pendingMachinery.length > 0) {
+                    console.log(`Sincronizando ${pendingMachinery.length} máquinas...`);
+                    const { error } = await supabase.rpc('sync_machinery', { p_machinery: pendingMachinery });
+                    if (error) throw error;
+                    await Promise.all(pendingMachinery.map(m =>
+                        db.machinery.update(m.id, { sync_status: SYNC_STATUS.SYNCED })
+                    ));
+                }
+            } catch (err) {
+                console.error('Erro ao sincronizar maquinário:', err);
             }
 
             // 3. Sincronizar Colaboradores
-            const pendingColabs = await db.collaborators
-                .filter(c => c.sync_status !== SYNC_STATUS.SYNCED)
-                .toArray();
-
-            if (pendingColabs.length > 0) {
-                console.log(`Sincronizando ${pendingColabs.length} colaboradores...`);
-                const { error } = await supabase.rpc('sync_collaborators', { p_collaborators: pendingColabs });
-                if (error) throw error;
-                await Promise.all(pendingColabs.map(c =>
-                    db.collaborators.update(c.id, { sync_status: SYNC_STATUS.SYNCED })
-                ));
+            try {
+                const pendingColabs = await db.collaborators
+                    .filter(c => [SYNC_STATUS.PENDING_CREATE, SYNC_STATUS.PENDING_UPDATE].includes(c.sync_status))
+                    .toArray();
+                if (pendingColabs.length > 0) {
+                    console.log(`Sincronizando ${pendingColabs.length} colaboradores...`);
+                    const { error } = await supabase.rpc('sync_collaborators', { p_collaborators: pendingColabs });
+                    if (error) throw error;
+                    await Promise.all(pendingColabs.map(c =>
+                        db.collaborators.update(c.id, { sync_status: SYNC_STATUS.SYNCED })
+                    ));
+                }
+            } catch (err) {
+                console.error('Erro ao sincronizar colaboradores:', err);
             }
 
             // 4. Sincronizar Tipos de Serviço
-            const pendingTypes = await db.service_types
-                .filter(t => t.sync_status !== SYNC_STATUS.SYNCED)
-                .toArray();
-
-            if (pendingTypes.length > 0) {
-                console.log(`Sincronizando ${pendingTypes.length} tipos de serviço...`);
-                const { error } = await supabase.rpc('sync_service_types', { p_types: pendingTypes });
-                if (error) throw error;
-                await Promise.all(pendingTypes.map(t =>
-                    db.service_types.update(t.id, { sync_status: SYNC_STATUS.SYNCED })
-                ));
+            try {
+                const pendingTypes = await db.service_types
+                    .filter(t => [SYNC_STATUS.PENDING_CREATE, SYNC_STATUS.PENDING_UPDATE].includes(t.sync_status))
+                    .toArray();
+                if (pendingTypes.length > 0) {
+                    console.log(`Sincronizando ${pendingTypes.length} tipos de serviço...`);
+                    const { error } = await supabase.rpc('sync_service_types', { p_types: pendingTypes });
+                    if (error) throw error;
+                    await Promise.all(pendingTypes.map(t =>
+                        db.service_types.update(t.id, { sync_status: SYNC_STATUS.SYNCED })
+                    ));
+                }
+            } catch (err) {
+                console.error('Erro ao sincronizar tipos de serviço:', err);
             }
 
             // 5. Sincronizar Serviços (OS)
-            const pendingServices = await db.services
-                .filter(s => s.sync_status !== SYNC_STATUS.SYNCED)
-                .toArray();
+            try {
+                const pendingServices = await db.services
+                    .filter(s => [SYNC_STATUS.PENDING_CREATE, SYNC_STATUS.PENDING_UPDATE].includes(s.sync_status))
+                    .toArray();
 
-            if (pendingServices.length > 0) {
-                console.log(`Sincronizando ${pendingServices.length} serviços...`);
-                const { error } = await supabase.rpc('sync_services', { p_services: pendingServices });
-                if (error) throw error;
-                await Promise.all(pendingServices.map(s =>
-                    db.services.update(s.id, { sync_status: SYNC_STATUS.SYNCED })
-                ));
+                if (pendingServices.length > 0) {
+                    console.log(`Sincronizando ${pendingServices.length} serviços...`, pendingServices);
+                    const { error } = await supabase.rpc('sync_services', { p_services: pendingServices });
+                    if (error) {
+                        console.error('Erro detalhado RPC sync_services:', error);
+                        throw error;
+                    }
+                    await Promise.all(pendingServices.map(s =>
+                        db.services.update(s.id, { sync_status: SYNC_STATUS.SYNCED })
+                    ));
+                }
+            } catch (err) {
+                console.error('Erro ao sincronizar serviços:', err);
             }
 
             // Após empurrar, puxar novidades
@@ -146,16 +203,49 @@ export const SyncProvider = ({ children }) => {
             setLastSync(new Date());
         } catch (error) {
             console.error('❌ Falha na sincronização:', error);
+            if (error.message) console.error('Mensagem de erro:', error.message);
+            if (error.details) console.error('Detalhes do erro:', error.details);
+            if (error.hint) console.error('Dica:', error.hint);
         } finally {
             setIsSyncing(false);
+            syncInProgressRef.current = false;
         }
-    }, [isOnline, isSyncing, pullFromServer, isAuthenticated]);
+    }, [isOnline, pullFromServer, isAuthenticated]);
 
-    // Tentar sincronizar quando voltar online ou logar
+    // Tentar sincronizar quando voltar online, logar ou mudar visibilidade (voltar para a aba)
     useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && isOnline && isAuthenticated) {
+                console.log('Aba visível, acionando sincronização...');
+                syncWithServer();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         if (isOnline && isAuthenticated) {
             syncWithServer();
         }
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [isOnline, isAuthenticated, syncWithServer]);
+
+    // Loop de sincronização periódica (cada 30 segundos)
+    useEffect(() => {
+        let interval = null;
+
+        if (isOnline && isAuthenticated) {
+            interval = setInterval(() => {
+                console.log('Sincronização periódica iniciada...');
+                syncWithServer();
+            }, 30000); // 30 segundos
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
     }, [isOnline, isAuthenticated, syncWithServer]);
 
     return (

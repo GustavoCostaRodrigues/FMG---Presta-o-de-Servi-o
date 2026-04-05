@@ -14,7 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import Sidebar from '../components/Sidebar';
 import AddServiceModal from '../components/AddServiceModal';
 import ServiceDetailModal from '../components/ServiceDetailModal';
-import { db } from '../lib/db';
+import { db, SYNC_STATUS } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import './Agenda.css';
 
@@ -27,12 +27,13 @@ const Agenda = () => {
     // Buscar serviços reais do Banco de dados
     const services = useLiveQuery(async () => {
         try {
-            const items = await db.services.toArray();
+            const items = await db.services.filter(s => s.sync_status !== SYNC_STATUS.PENDING_DELETE).toArray();
             const enrichedItems = await Promise.all(items.map(async (s) => {
                 try {
                     const client = s.client_id ? await db.clients.get(s.client_id) : null;
                     const machine = s.machine_id ? await db.machinery.get(s.machine_id) : null;
                     const collaborator = s.technician_id ? await db.collaborators.get(s.technician_id) : null;
+                    const serviceType = s.service_type_id ? await db.service_types.get(s.service_type_id) : null;
 
                     const serviceDate = s.date ? new Date(s.date) : new Date();
 
@@ -41,6 +42,7 @@ const Agenda = () => {
                         clientName: client?.name || 'Cliente Removido',
                         machineName: machine?.name || 'Máquina Removida',
                         collaboratorName: collaborator?.name || 'Técnico',
+                        serviceTypeName: serviceType?.name || 'Serviço',
                         date: isNaN(serviceDate.getTime()) ? new Date() : serviceDate
                     };
                 } catch (err) {
@@ -143,7 +145,7 @@ const Agenda = () => {
                                         <span className="day-number">{format(day, 'd')}</span>
                                         <div className="service-dots" style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '100%', marginTop: '4px' }}>
                                             {dayServices.map(s => {
-                                                const truncatedTitle = s.title?.length > 22 ? s.title.substring(0, 20) + '...' : s.title;
+                                                const truncatedTitle = s.serviceTypeName?.length > 22 ? s.serviceTypeName.substring(0, 20) + '...' : s.serviceTypeName;
                                                 return (
                                                     <div
                                                         key={s.id}
@@ -155,9 +157,6 @@ const Agenda = () => {
                                                         }}
                                                     >
                                                         <span className="calendar-service-title">{truncatedTitle}</span>
-                                                        <span className="calendar-service-time">
-                                                            <Clock size={8} /> {s.date instanceof Date && !isNaN(s.date) ? format(s.date, 'HH:mm') : '--:--'}
-                                                        </span>
                                                     </div>
                                                 );
                                             })}
@@ -193,7 +192,7 @@ const Agenda = () => {
                                         }}
                                     >
                                         <div className="service-card-title">
-                                            {serviceAtHour.title?.length > 45 ? serviceAtHour.title.substring(0, 42) + '...' : serviceAtHour.title}
+                                            {serviceAtHour.serviceTypeName?.length > 45 ? serviceAtHour.serviceTypeName.substring(0, 42) + '...' : serviceAtHour.serviceTypeName}
                                         </div>
                                         <div className="service-card-client">
                                             <User size={12} /> {serviceAtHour.clientName} • <Clock size={12} /> {serviceAtHour.duration || 'N/A'}
@@ -241,7 +240,7 @@ const Agenda = () => {
                                                 }}
                                             >
                                                 <div className="service-card-title" style={{ fontSize: '10px' }}>
-                                                    {service.title?.length > 25 ? service.title.substring(0, 22) + '...' : service.title}
+                                                    {service.serviceTypeName?.length > 25 ? service.serviceTypeName.substring(0, 22) + '...' : service.serviceTypeName}
                                                 </div>
                                                 <div className="service-card-client" style={{ fontSize: '9px' }}>{service.clientName}</div>
                                             </div>

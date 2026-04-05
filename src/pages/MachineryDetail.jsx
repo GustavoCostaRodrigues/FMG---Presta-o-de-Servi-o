@@ -11,6 +11,7 @@ import { generateServiceReport } from '../utils/pdfGenerator';
 import { db } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSync } from '../context/SyncContext';
+import { enrichServiceData } from '../utils/serviceHelpers';
 
 const MachineryDetail = () => {
     const { id } = useParams();
@@ -41,12 +42,14 @@ const MachineryDetail = () => {
 
     const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-    const handleGenerateReport = () => {
+    const handleGenerateReport = async () => {
+        if (!machineInfo) return;
+        const enrichedData = await enrichServiceData(services);
         generateServiceReport({
             title: machineInfo.name,
-            subtitle: `Modelo: ${machineInfo.model} | SN: ${machineInfo.serial}`,
+            subtitle: `Modelo: ${machineInfo.model} | SN: ${machineInfo.serial_number}`,
             type: 'Maquinário',
-            data: services,
+            data: enrichedData,
             filename: `relatorio-maquina-${machineInfo.name.toLowerCase().replace(/ /g, '-')}.pdf`
         });
     };
@@ -131,27 +134,6 @@ const MachineryDetail = () => {
                                         <div>
                                             <span style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', opacity: 0.6, fontWeight: 700 }}>Modelo</span>
                                             <span style={{ fontWeight: 600 }}>{machineInfo.model}</span>
-                                        </div>
-                                    </div>
-                                    <div className="info-meta">
-                                        <Building2 size={16} opacity={0.7} />
-                                        <div>
-                                            <span style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', opacity: 0.6, fontWeight: 700 }}>Cliente</span>
-                                            <span style={{ fontWeight: 600 }}>{machineInfo.client}</span>
-                                        </div>
-                                    </div>
-                                    <div className="info-meta">
-                                        <Calendar size={16} opacity={0.7} />
-                                        <div>
-                                            <span style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', opacity: 0.6, fontWeight: 700 }}>Instalação</span>
-                                            <span style={{ fontWeight: 600 }}>{machineInfo.purchaseDate}</span>
-                                        </div>
-                                    </div>
-                                    <div className="info-meta">
-                                        <ShieldCheck size={16} opacity={0.7} />
-                                        <div>
-                                            <span style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', opacity: 0.6, fontWeight: 700 }}>Garantia</span>
-                                            <span style={{ fontWeight: 600 }}>{machineInfo.warranty}</span>
                                         </div>
                                     </div>
                                 </div>

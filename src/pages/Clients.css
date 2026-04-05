@@ -75,6 +75,14 @@
 
 .client-info-item svg {
     color: var(--brand-primary);
+    flex-shrink: 0;
+}
+
+.client-address-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
 }
 
 .client-card-footer {
